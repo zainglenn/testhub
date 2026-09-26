@@ -31,6 +31,28 @@ automatically.
 - **CSV import / export** — round-trip the repository; nested suites via `Parent / Child`.
 - **CI results ingestion** — push JUnit XML into runs via a project API token.
 
+## Screenshots
+
+**Test repository with per-case Jira links**
+
+![Test cases](docs/screenshots/repository.png)
+
+**Traceability matrix** — requirements from Jira → tests → results → bugs
+
+![Traceability](docs/screenshots/traceability.png)
+
+**Embedded Jira issue panel** — coverage inside the issue (Forge app)
+
+![Jira issue panel](docs/screenshots/jira-panel.png)
+
+**Linked issues on a case**
+
+![Case Jira tab](docs/screenshots/case-jira.png)
+
+**Dashboard** — coverage and execution trends
+
+![Dashboard](docs/screenshots/dashboard.png)
+
 ## Stack
 
 - [Next.js 16](https://nextjs.org) (App Router, Server Components + Server Functions)
@@ -315,8 +337,8 @@ provisions users on first login (matched by email).
 
 ## Roadmap ideas
 
-Test plans and run assignment, Jira status/transition write-back, parameterized
-cases, per-project access control, and email delivery for invitations.
+Jira status/transition write-back, parameterized cases, and email delivery for
+invitations.
 
 ## Deploy (Vercel + Supabase)
 
