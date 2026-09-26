@@ -1,5 +1,10 @@
 # TestHub
 
+[![CI](https://github.com/zainglenn/testhub/actions/workflows/ci.yml/badge.svg)](https://github.com/zainglenn/testhub/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Next.js 16](https://img.shields.io/badge/Next.js-16-black.svg)](https://nextjs.org)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
+
 A test management tool with a first-class [Jira Cloud](https://www.atlassian.com/software/jira) integration.
 
 Author test cases and organise them into nested suites, then trace them to Jira
@@ -51,11 +56,10 @@ npm run dev
 Open http://localhost:3000.
 
 You will be redirected to `/login`. Accounts are stored locally with
-scrypt-hashed passwords. The seed creates a default admin account:
-
-```
-admin@testhub.dev / admin
-```
+scrypt-hashed passwords. The seed creates an admin account
+(`admin@testhub.dev` by default) and prints a **randomly generated password**
+once — copy it, or set `SEED_ADMIN_PASSWORD` / `SEED_ADMIN_EMAIL` to choose your
+own before running `db:seed`.
 
 There is no public sign-up; admins manage accounts from the **Users** page.
 Editing and running tests records attribution (created by / executed by). Swap
@@ -365,3 +369,14 @@ The container runs `prisma migrate deploy` on start (via `DIRECT_URL`), then
 - Jira OAuth and SSO secrets are stored in the database in **plain text** —
   encrypt them (or use a secret manager) before exposing this to multiple
   tenants.
+
+## Contributing
+
+Contributions are welcome — see [CONTRIBUTING.md](./CONTRIBUTING.md). For
+security issues, follow [SECURITY.md](./SECURITY.md) instead of opening a public
+issue.
+
+## License
+
+[MIT](./LICENSE) © 2026 Zain Glenn.
+

@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { hashPassword } from "../src/lib/password";
 import { prisma } from "./script-client";
 
@@ -8,7 +9,7 @@ async function main() {
 }
 
 async function ensureAdminUser(): Promise<string> {
-  const email = "admin@testhub.dev";
+  const email = process.env.SEED_ADMIN_EMAIL ?? "admin@testhub.dev";
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     if (existing.role !== "ADMIN") {
@@ -20,15 +21,25 @@ async function ensureAdminUser(): Promise<string> {
     return existing.id;
   }
 
+  const generated = !process.env.SEED_ADMIN_PASSWORD;
+  const password =
+    process.env.SEED_ADMIN_PASSWORD ?? crypto.randomBytes(18).toString("base64url");
+
   const user = await prisma.user.create({
     data: {
       email,
       name: "Administrator",
-      passwordHash: hashPassword("admin"),
+      passwordHash: hashPassword(password),
       role: "ADMIN",
     },
   });
-  console.log(`Created admin ${email} (password: "admin").`);
+
+  console.log(`Created admin ${email}.`);
+  if (generated) {
+    console.log(
+      `Generated admin password (store it now, it is not shown again): ${password}`,
+    );
+  }
   return user.id;
 }
 

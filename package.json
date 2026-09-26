@@ -15,6 +15,7 @@
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:scrum": "tsx prisma/seed-scrum-demo.ts",
+    "db:password": "tsx prisma/set-password.ts",
     "db:import:epp": "tsx prisma/import-epp.ts",
     "db:backfill:workspaces": "tsx prisma/backfill-workspaces.ts",
     "db:studio": "prisma studio",
