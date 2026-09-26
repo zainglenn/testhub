@@ -54,7 +54,10 @@ export default async function TestPlanPage(
   }
 
   const availableRuns = await prisma.testRun.findMany({
-    where: { projectId: plan.projectId, NOT: { planId: plan.id } },
+    where: {
+      projectId: plan.projectId,
+      OR: [{ planId: null }, { planId: { not: plan.id } }],
+    },
     orderBy: { createdAt: "desc" },
     select: { id: true, name: true },
   });
