@@ -21,6 +21,9 @@ automatically.
   automatically, and disconnect at any time.
 - **Issue linking & traceability** — search issues by text or key, link them to a
   test case, refresh their metadata, unlink, and see per-project Jira coverage.
+- **Traceability matrix** — pull requirements from Jira with a JQL query and trace
+  them to their tests, latest results and linked bugs (Requirement → Tests →
+  Results → Bugs).
 - **Dashboard** — sidebar-driven shell, overview stat cards, a test-assets-per-project
   bar chart, and a Jira coverage donut (MUI X Charts).
 - **Sortable case grid** — the project case list is a MUI X DataGrid with sorting,
@@ -175,7 +178,7 @@ The top bar is a mode switcher; each mode has its own sidebar:
 
 | Mode | Sidebar |
 | --- | --- |
-| **Projects** | All projects → inside a project: Overview / Test cases / Test runs / Reports / Settings |
+| **Projects** | All projects → inside a project: Overview / Test cases / Test runs / Reports / Traceability / Settings |
 | **Workspace** | Users, Groups, Roles, Fields, Parameters, Shared steps, Tags, Attachments, Audit log, Single sign-on |
 | **Dashboards** | Overview (charts + stats) |
 | **Queries** | Saved queries (placeholder) |
