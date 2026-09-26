@@ -24,6 +24,8 @@ automatically.
 - **Traceability matrix** — pull requirements from Jira with a JQL query and trace
   them to their tests, latest results and linked bugs (Requirement → Tests →
   Results → Bugs).
+- **Parameterized cases** — attach workspace parameters to a test case and record
+  a result per dataset (data-driven execution).
 - **Dashboard** — sidebar-driven shell, overview stat cards, a test-assets-per-project
   bar chart, and a Jira coverage donut (MUI X Charts).
 - **Sortable case grid** — the project case list is a MUI X DataGrid with sorting,
@@ -337,8 +339,7 @@ provisions users on first login (matched by email).
 
 ## Roadmap ideas
 
-Jira status/transition write-back, parameterized cases, and email delivery for
-invitations.
+Jira status/transition write-back and email delivery for invitations.
 
 ## Deploy (Vercel + Supabase)
 
