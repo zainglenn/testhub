@@ -1,0 +1,19 @@
+{
+  "name": "testhub-forge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TestHub Jira issue panel (Forge)",
+  "scripts": {
+    "lint": "forge lint",
+    "deploy": "forge deploy",
+    "app:install": "forge install"
+  },
+  "dependencies": {
+    "@forge/api": "^5.0.0",
+    "@forge/bridge": "^7.0.0",
+    "@forge/react": "^12.2.0",
+    "@forge/resolver": "^1.6.0",
+    "buffer": "^6.0.3",
+    "react": "^18.3.1"
+  }
+}

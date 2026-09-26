@@ -1,0 +1,32 @@
+modules:
+  jira:issuePanel:
+    - key: testhub-coverage-panel
+      resource: main
+      resolver:
+        function: resolver
+      render: native
+      title: TestHub coverage
+      icon: https://developer.atlassian.com/platform/forge/images/icons/issue-panel-icon.svg
+  function:
+    - key: resolver
+      handler: index.handler
+
+resources:
+  - key: main
+    path: src/frontend/index.jsx
+
+app:
+  runtime:
+    name: nodejs22.x
+    memoryMB: 256
+  licensing:
+    enabled: false
+  id: ari:cloud:ecosystem::app/cd9cc487-9a9d-4194-aee8-198dd82ea869
+
+permissions:
+  scopes:
+    - read:jira-work
+  external:
+    fetch:
+      backend:
+        - address: https://testhub-one.vercel.app
