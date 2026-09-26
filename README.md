@@ -180,7 +180,7 @@ The top bar is a mode switcher; each mode has its own sidebar:
 
 | Mode | Sidebar |
 | --- | --- |
-| **Projects** | All projects → inside a project: Overview / Test cases / Test runs / Reports / Traceability / Settings |
+| **Projects** | All projects → inside a project: Overview / Test cases / Test runs / Test plans / Reports / Traceability / Settings |
 | **Workspace** | Users, Groups, Roles, Fields, Parameters, Shared steps, Tags, Attachments, Audit log, Single sign-on |
 | **Dashboards** | Overview (charts + stats) |
 | **Queries** | Saved queries (placeholder) |
