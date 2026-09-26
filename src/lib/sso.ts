@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { decryptSecret } from "@/lib/secret-box";
 import { getWorkspace } from "@/lib/workspace";
 
 export function appBaseUrl(): string {
@@ -20,7 +21,7 @@ export async function getSsoSettings() {
   ) {
     return null;
   }
-  return config;
+  return { ...config, clientSecret: decryptSecret(config.clientSecret) };
 }
 
 export type OidcEndpoints = {

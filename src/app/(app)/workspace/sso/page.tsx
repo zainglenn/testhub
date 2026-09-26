@@ -77,7 +77,8 @@ export default async function SsoPage() {
               name="clientSecret"
               label="Client secret"
               type="password"
-              defaultValue={config?.clientSecret ?? ""}
+              placeholder={config?.clientSecret ? "•••••••• (unchanged)" : ""}
+              helperText="Leave blank to keep the current secret. Stored encrypted."
             />
           </ActionForm>
         </CardContent>

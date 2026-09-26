@@ -6,6 +6,7 @@ import {
   fetchAccessibleResources,
 } from "@/lib/jira/oauth";
 import { prisma } from "@/lib/prisma";
+import { encryptSecret } from "@/lib/secret-box";
 import { getWorkspace } from "@/lib/workspace";
 
 export const dynamic = "force-dynamic";
@@ -56,8 +57,10 @@ export async function GET(request: NextRequest) {
         cloudId: resource.id,
         siteUrl: resource.url,
         siteName: resource.name,
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token ?? null,
+        accessToken: encryptSecret(tokens.access_token),
+        refreshToken: tokens.refresh_token
+          ? encryptSecret(tokens.refresh_token)
+          : null,
         expiresAt,
         scopes: tokens.scope,
       },

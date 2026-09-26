@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { decryptSecret, encryptSecret } from "@/lib/secret-box";
 import { getWorkspace } from "@/lib/workspace";
 import { JIRA_API_BASE } from "./config";
 import { refreshAccessToken } from "./oauth";
@@ -57,23 +58,35 @@ export async function getFreshConnection(
     throw new Error("Jira is not connected");
   }
 
+  const accessToken = decryptSecret(connection.accessToken);
+  const refreshToken = connection.refreshToken
+    ? decryptSecret(connection.refreshToken)
+    : null;
+
   const stillValid = connection.expiresAt.getTime() - Date.now() > TOKEN_SKEW_MS;
-  if (stillValid || !connection.refreshToken) {
-    return connection;
+  if (stillValid || !refreshToken) {
+    return { ...connection, accessToken, refreshToken };
   }
 
-  const tokens = await refreshAccessToken(connection.refreshToken);
+  const tokens = await refreshAccessToken(refreshToken);
   const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
+  const nextRefreshToken = tokens.refresh_token ?? refreshToken;
 
-  return prisma.jiraConnection.update({
+  const updated = await prisma.jiraConnection.update({
     where: { id: connection.id },
     data: {
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token ?? connection.refreshToken,
+      accessToken: encryptSecret(tokens.access_token),
+      refreshToken: encryptSecret(nextRefreshToken),
       expiresAt,
       scopes: tokens.scope,
     },
   });
+
+  return {
+    ...updated,
+    accessToken: tokens.access_token,
+    refreshToken: nextRefreshToken,
+  };
 }
 
 export async function jiraFetch<T>(

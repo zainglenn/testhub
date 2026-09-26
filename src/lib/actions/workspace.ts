@@ -9,6 +9,7 @@ import { getSession } from "@/lib/auth";
 import { requirePermission } from "@/lib/authz";
 import { ALL_PERMISSIONS, PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { encryptSecret } from "@/lib/secret-box";
 import {
   fieldInput,
   firstError,
@@ -404,6 +405,17 @@ export async function saveSso(
   const parsed = ssoInput.safeParse(formToObject(formData));
   if (!parsed.success) return { ok: false, error: firstError(parsed.error) };
 
+  const existing = await prisma.ssoConfig.findUnique({
+    where: { workspaceId: ctx.workspace.id },
+    select: { clientSecret: true },
+  });
+
+  // Only replace the secret when a new one is provided; blank keeps the stored
+  // (encrypted) value. New values are encrypted at rest.
+  const clientSecret = parsed.data.clientSecret
+    ? encryptSecret(parsed.data.clientSecret)
+    : (existing?.clientSecret ?? null);
+
   await prisma.ssoConfig.upsert({
     where: { workspaceId: ctx.workspace.id },
     create: {
@@ -412,14 +424,14 @@ export async function saveSso(
       provider: parsed.data.provider,
       issuerUrl: parsed.data.issuerUrl,
       clientId: parsed.data.clientId,
-      clientSecret: parsed.data.clientSecret,
+      clientSecret,
     },
     update: {
       enabled: parsed.data.enabled === "on",
       provider: parsed.data.provider,
       issuerUrl: parsed.data.issuerUrl,
       clientId: parsed.data.clientId,
-      clientSecret: parsed.data.clientSecret,
+      clientSecret,
     },
   });
   await audit(ctx.workspace.id, ctx.session.userId, "sso.update");
