@@ -5,64 +5,49 @@ const WORKSPACE_NAME = "SCRUM (Jira demo)";
 const PROJECT_KEY = "SCRUM";
 const ADMIN_EMAIL = "admin@testhub.dev";
 
+const SUITES = ["Authentication", "Account", "Catalogue", "Cart & Checkout", "Platform"];
+
+// Real Jira issue keys (project SCRUM) that the demo cases trace to.
+const ISSUES: Record<string, { type: string; summary: string }> = {
+  "SCRUM-5": { type: "Story", summary: "As a customer I can sign in with email and password" },
+  "SCRUM-6": { type: "Story", summary: "As a customer I can reset my password by email" },
+  "SCRUM-7": { type: "Story", summary: "As a customer I can update my profile details" },
+  "SCRUM-8": { type: "Story", summary: "As a customer I can view my order history" },
+  "SCRUM-9": { type: "Story", summary: "As a customer I can search products" },
+  "SCRUM-10": { type: "Story", summary: "As a customer I can filter products by category" },
+  "SCRUM-11": { type: "Story", summary: "As a customer I can add items to the cart" },
+  "SCRUM-12": { type: "Story", summary: "As a customer I can apply a discount code" },
+  "SCRUM-13": { type: "Story", summary: "As a customer I can check out with a saved card" },
+  "SCRUM-14": { type: "Task", summary: "Set up an end-to-end test pipeline in CI" },
+  "SCRUM-15": { type: "Bug", summary: "Password reset email is not delivered" },
+  "SCRUM-16": { type: "Bug", summary: "Search returns duplicate results" },
+  "SCRUM-17": { type: "Bug", summary: "Cart total is incorrect when a discount is applied" },
+};
+
 type SeedCase = {
   title: string;
   suite: string;
-  issueKey: string;
-  issueType: string;
-  issueSummary: string;
+  priority: "HIGH" | "MEDIUM";
   status: "PASSED" | "FAILED" | null;
+  links: string[];
+  comment?: string;
 };
 
 const CASES: SeedCase[] = [
-  {
-    title: "Sign in with valid credentials",
-    suite: "Authentication",
-    issueKey: "SCRUM-1",
-    issueType: "Story",
-    issueSummary: "As a user I can sign in",
-    status: "PASSED",
-  },
-  {
-    title: "Sign in rejects an invalid password",
-    suite: "Authentication",
-    issueKey: "SCRUM-2",
-    issueType: "Story",
-    issueSummary: "As a user I am told when my password is wrong",
-    status: "PASSED",
-  },
-  {
-    title: "Password reset email is delivered",
-    suite: "Authentication",
-    issueKey: "SCRUM-3",
-    issueType: "Bug",
-    issueSummary: "Password reset email is not delivered",
-    status: "FAILED",
-  },
-  {
-    title: "Board loads within two seconds",
-    suite: "Dashboard",
-    issueKey: "SCRUM-4",
-    issueType: "Story",
-    issueSummary: "As a user the board loads quickly",
-    status: "PASSED",
-  },
-  {
-    title: "Sprint filter updates the board",
-    suite: "Dashboard",
-    issueKey: "SCRUM-5",
-    issueType: "Story",
-    issueSummary: "As a user I can filter the board by sprint",
-    status: null,
-  },
-  {
-    title: "Card drag and drop updates status",
-    suite: "Dashboard",
-    issueKey: "SCRUM-6",
-    issueType: "Story",
-    issueSummary: "As a user I can drag cards between columns",
-    status: null,
-  },
+  { title: "Sign in with a valid email and password", suite: "Authentication", priority: "HIGH", status: "PASSED", links: ["SCRUM-5"] },
+  { title: "Sign in is rejected with an invalid password", suite: "Authentication", priority: "HIGH", status: "PASSED", links: ["SCRUM-5"] },
+  { title: "Password reset email is delivered", suite: "Authentication", priority: "HIGH", status: "FAILED", links: ["SCRUM-6", "SCRUM-15"], comment: "No email arrived within 10 minutes; reproduced across two providers." },
+  { title: "Password reset link expires after 30 minutes", suite: "Authentication", priority: "MEDIUM", status: "PASSED", links: ["SCRUM-6"] },
+  { title: "Update profile name and email", suite: "Account", priority: "MEDIUM", status: "PASSED", links: ["SCRUM-7"] },
+  { title: "Order history lists the last 10 orders", suite: "Account", priority: "MEDIUM", status: "PASSED", links: ["SCRUM-8"] },
+  { title: "Search returns relevant products", suite: "Catalogue", priority: "HIGH", status: "PASSED", links: ["SCRUM-9"] },
+  { title: "Search does not return duplicate products", suite: "Catalogue", priority: "MEDIUM", status: "FAILED", links: ["SCRUM-9", "SCRUM-16"], comment: "The same product is listed twice on page 2." },
+  { title: "Filter products by category", suite: "Catalogue", priority: "MEDIUM", status: "PASSED", links: ["SCRUM-10"] },
+  { title: "Add an item to the cart", suite: "Cart & Checkout", priority: "HIGH", status: "PASSED", links: ["SCRUM-11"] },
+  { title: "Apply a percentage discount code", suite: "Cart & Checkout", priority: "MEDIUM", status: "PASSED", links: ["SCRUM-12"] },
+  { title: "Cart total reflects the discount", suite: "Cart & Checkout", priority: "HIGH", status: "FAILED", links: ["SCRUM-12", "SCRUM-17"], comment: "Total shows the undiscounted amount." },
+  { title: "Check out with a saved card", suite: "Cart & Checkout", priority: "HIGH", status: "PASSED", links: ["SCRUM-13"] },
+  { title: "CI pipeline runs the E2E suite on push", suite: "Platform", priority: "MEDIUM", status: null, links: ["SCRUM-14"] },
 ];
 
 async function main() {
@@ -71,16 +56,10 @@ async function main() {
     throw new Error(`Admin ${ADMIN_EMAIL} not found. Run "npm run db:seed" first.`);
   }
 
-  let workspace = await prisma.workspace.findFirst({
-    where: { name: WORKSPACE_NAME },
-  });
+  let workspace = await prisma.workspace.findFirst({ where: { name: WORKSPACE_NAME } });
   if (!workspace) {
-    workspace = await prisma.workspace.create({
-      data: { name: WORKSPACE_NAME },
-    });
+    workspace = await prisma.workspace.create({ data: { name: WORKSPACE_NAME } });
     console.log(`Created workspace "${WORKSPACE_NAME}".`);
-  } else {
-    console.log(`Workspace "${WORKSPACE_NAME}" already exists.`);
   }
 
   const owner = await prisma.role.upsert({
@@ -95,36 +74,26 @@ async function main() {
   });
 
   await prisma.workspaceMember.upsert({
-    where: {
-      workspaceId_userId: { workspaceId: workspace.id, userId: admin.id },
-    },
+    where: { workspaceId_userId: { workspaceId: workspace.id, userId: admin.id } },
     create: { workspaceId: workspace.id, userId: admin.id, roleId: owner.id },
     update: { roleId: owner.id },
   });
 
-  const existing = await prisma.project.findFirst({
-    where: { workspaceId: workspace.id, key: PROJECT_KEY },
-  });
-  if (existing) {
-    console.log(
-      `Project ${PROJECT_KEY} already exists in this workspace — nothing to seed.`,
-    );
-    return;
-  }
+  // Rebuild the demo project so re-running is idempotent.
+  await prisma.project.deleteMany({ where: { workspaceId: workspace.id, key: PROJECT_KEY } });
 
   const project = await prisma.project.create({
     data: {
       workspaceId: workspace.id,
       key: PROJECT_KEY,
-      name: "SCRUM board demo",
-      description:
-        "Demo project linked to a Jira Cloud SCRUM board to show the integration.",
+      name: "Customer Portal",
+      description: "Customer portal releases, traced from Jira stories and bugs.",
       createdById: admin.id,
     },
   });
 
   const suiteIds = new Map<string, string>();
-  for (const [index, name] of ["Authentication", "Dashboard"].entries()) {
+  for (const [index, name] of SUITES.entries()) {
     const suite = await prisma.testSuite.create({
       data: { projectId: project.id, name, order: index },
     });
@@ -134,63 +103,56 @@ async function main() {
   const run = await prisma.testRun.create({
     data: {
       projectId: project.id,
-      name: "SCRUM demo run",
-      description: "Sample execution for the Jira integration demo.",
+      name: "Sprint 0 regression",
+      description: "End-to-end regression across the customer portal.",
       environment: "Staging",
       createdById: admin.id,
     },
   });
 
-  for (const [index, seed] of CASES.entries()) {
+  let number = 1;
+  for (const spec of CASES) {
+    const links = spec.links.map((issueKey) => {
+      const issue = ISSUES[issueKey];
+      return {
+        issueKey,
+        summary: issue?.summary ?? null,
+        issueType: issue?.type ?? null,
+        projectKey: PROJECT_KEY,
+      };
+    });
+
     const testCase = await prisma.testCase.create({
       data: {
         projectId: project.id,
-        suiteId: suiteIds.get(seed.suite) ?? null,
-        number: index + 1,
-        title: seed.title,
-        preconditions: "The application is deployed and reachable.",
-        priority: "HIGH",
+        suiteId: suiteIds.get(spec.suite) ?? null,
+        number: number++,
+        title: spec.title,
+        preconditions: "The staging environment is deployed with seeded data.",
+        priority: spec.priority,
         createdById: admin.id,
         steps: {
           create: [
-            {
-              order: 0,
-              action: "Open the board and sign in",
-              expectedResult: "The board is displayed",
-            },
-            {
-              order: 1,
-              action: seed.title,
-              expectedResult: "The expected behaviour is observed",
-            },
+            { order: 0, action: "Open the customer portal", expectedResult: "The portal loads" },
+            { order: 1, action: spec.title, expectedResult: "The expected behaviour is observed" },
           ],
         },
-        jiraLinks: {
-          create: {
-            issueKey: seed.issueKey,
-            summary: seed.issueSummary,
-            issueType: seed.issueType,
-            projectKey: PROJECT_KEY,
-          },
-        },
+        jiraLinks: { create: links },
       },
     });
 
     await prisma.testRunItem.create({
-      data: { runId: run.id, testCaseId: testCase.id, order: index },
+      data: { runId: run.id, testCaseId: testCase.id, order: testCase.number },
     });
 
-    if (seed.status) {
+    if (spec.status) {
       await prisma.testExecution.create({
         data: {
           projectId: project.id,
           testCaseId: testCase.id,
           runId: run.id,
-          status: seed.status,
-          comment:
-            seed.status === "FAILED"
-              ? "The reset email never arrived within 10 minutes."
-              : null,
+          status: spec.status,
+          comment: spec.comment ?? null,
           executedById: admin.id,
         },
       });
@@ -198,11 +160,9 @@ async function main() {
   }
 
   console.log(
-    `Seeded project ${PROJECT_KEY} with ${CASES.length} cases (3 passed, 1 failed, 2 untested).`,
+    `Seeded "${PROJECT_KEY}" with ${CASES.length} cases linked to real Jira issues (${CASES.filter((c) => c.status === "FAILED").length} failing).`,
   );
-  console.log(
-    `Switch to the "${WORKSPACE_NAME}" workspace from the sidebar switcher.`,
-  );
+  console.log(`Switch to the "${WORKSPACE_NAME}" workspace from the sidebar switcher.`);
 }
 
 main()
