@@ -338,6 +338,7 @@ Health check: `GET /api/health`.
 | `DATABASE_URL` | Supabase pooler URI (6543), `?pgbouncer=true`. |
 | `DIRECT_URL` | Supabase direct URI (5432) — used by migrations. |
 | `AUTH_SECRET` | Required in production; signs session cookies. |
+| `ENCRYPTION_KEY` | Encrypts Jira/SSO secrets at rest; keep stable across environments. |
 | `APP_BASE_URL` | Absolute public URL (Vercel domain). |
 | `SUPABASE_URL` | Supabase project URL (attachments). |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only storage key. |
@@ -366,9 +367,9 @@ The container runs `prisma migrate deploy` on start (via `DIRECT_URL`), then
   `Permissions-Policy`, HSTS) are set in `next.config.ts`.
 - `.env` is gitignored and `AUTH_SECRET` is required in production (the dev
   default is rejected).
-- Jira OAuth and SSO secrets are stored in the database in **plain text** —
-  encrypt them (or use a secret manager) before exposing this to multiple
-  tenants.
+- Jira OAuth tokens and the SSO client secret are **encrypted at rest**
+  (AES-256-GCM) using `ENCRYPTION_KEY` (falls back to `AUTH_SECRET`). Keep that
+  key stable and secret; changing it makes stored secrets unreadable.
 
 ## Contributing
 
