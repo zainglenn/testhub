@@ -1,6 +1,8 @@
 import { hashToken } from "@/lib/api-token";
+import { parseGaugeReport } from "@/lib/gauge";
 import { parseJUnit } from "@/lib/junit";
 import { prisma } from "@/lib/prisma";
+import { parseTrx } from "@/lib/trx";
 
 export const dynamic = "force-dynamic";
 
@@ -26,25 +28,44 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid API token." }, { status: 401 });
   }
 
-  let body: { junit?: unknown; runName?: unknown; environment?: unknown };
+  let body: {
+    junit?: unknown;
+    trx?: unknown;
+    gauge?: unknown;
+    runName?: unknown;
+    environment?: unknown;
+  };
   try {
     body = await request.json();
   } catch {
     return Response.json({ error: "Expected a JSON body." }, { status: 400 });
   }
 
-  const xml = typeof body.junit === "string" ? body.junit : null;
-  if (!xml) {
+  const junit = typeof body.junit === "string" ? body.junit : null;
+  const trx = typeof body.trx === "string" ? body.trx : null;
+  const gauge = typeof body.gauge === "string" ? body.gauge : null;
+
+  const results = junit
+    ? parseJUnit(junit)
+    : trx
+      ? parseTrx(trx)
+      : gauge
+        ? parseGaugeReport(gauge)
+        : null;
+
+  if (!results) {
     return Response.json(
-      { error: "Provide a 'junit' string containing the JUnit XML." },
+      {
+        error:
+          "Provide one of: 'junit' (JUnit XML), 'trx' (VSTest TRX) or 'gauge' (Gauge JSON).",
+      },
       { status: 400 },
     );
   }
 
-  const results = parseJUnit(xml);
   if (results.length === 0) {
     return Response.json(
-      { error: "No <testcase> elements found in the report." },
+      { error: "No test results found in the provided report." },
       { status: 400 },
     );
   }

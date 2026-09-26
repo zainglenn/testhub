@@ -169,6 +169,8 @@ curl -H "Authorization: Bearer $JIRA_PANEL_SECRET" \
 | `npm run db:push` | Push the schema without a migration (prototyping) |
 | `npm run db:seed` | Create the default admin user and workspace |
 | `npm run db:import:epp` | Sync the EPP Gauge suite (re-runnable; `-- --reset` rebuilds it) |
+| `npm run db:import:gauge` | Import any Gauge project's `.spec` files (set `GAUGE_SOURCE`) |
+| `npm run db:import:ado` | Import Azure DevOps Test Cases (set `ADO_ORG`/`ADO_PROJECT`/`ADO_PAT`) |
 | `npm run db:studio` | Open Prisma Studio |
 | `npm run db:generate` | Regenerate the Prisma client |
 
@@ -262,7 +264,10 @@ src/app/cases/[caseId]            Case editor: details, steps, Jira links
 
 ### CI results ingestion
 
-Create a token in a project's **Settings → API tokens**, then POST a JUnit report:
+Create a token in a project's **Settings → API tokens**, then POST a test report.
+The body accepts **one** of `junit` (JUnit XML), `trx` (VSTest/Azure Pipelines
+TRX) or `gauge` (Gauge's `--machine-readable` JSON) as a string, plus optional
+`runName` and `environment`:
 
 ```bash
 curl -X POST http://localhost:3000/api/ingest \
@@ -271,9 +276,24 @@ curl -X POST http://localhost:3000/api/ingest \
   -d '{"runName":"CI #123","environment":"CI","junit":"<testsuites>...</testsuites>"}'
 ```
 
-Test cases are matched by key in `classname`/`name` (e.g. `EPP-12`), falling
+Test cases are matched by key (e.g. `EPP-12`) in the name/classname, falling
 back to an exact title match. A completed run is created with the matched
 results; the response is `{ runId, matched, unmatched, failed }`.
+
+### Importing existing automation
+
+Turn already-automated tests into a repository without re-authoring:
+
+- **Gauge specs** — `npm run db:import:gauge` (set `GAUGE_SOURCE` to a Gauge
+  project root). Each `.spec` scenario becomes a test case and its bullet steps
+  become steps; directories under `specs/` become nested suites; `tags:` become
+  tags. Re-runnable (upserted by `externalId`).
+- **Azure DevOps** — `npm run db:import:ado` (set `ADO_ORG`, `ADO_PROJECT`,
+  `ADO_PAT`). Test Case work items are pulled via WIQL; their area path becomes
+  suites and the TCM steps become steps.
+
+Their **execution** results are ingested through `POST /api/ingest` with the
+`gauge` (machine-readable JSON) or `trx` (VSTest/Azure Pipelines) body key.
 
 ### Single sign-on (OIDC)
 

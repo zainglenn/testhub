@@ -18,6 +18,8 @@
     "db:password": "tsx prisma/set-password.ts",
     "db:encrypt-secrets": "tsx prisma/encrypt-secrets.ts",
     "db:import:epp": "tsx prisma/import-epp.ts",
+    "db:import:gauge": "tsx prisma/import-gauge.ts",
+    "db:import:ado": "tsx prisma/import-ado.ts",
     "db:backfill:workspaces": "tsx prisma/backfill-workspaces.ts",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate"
