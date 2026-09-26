@@ -1,12 +1,38 @@
 import React, { useEffect, useState } from "react";
-import ForgeReconciler, { Text, Heading, useProductContext } from "@forge/react";
+import ForgeReconciler, {
+  Stack,
+  Inline,
+  Heading,
+  Text,
+  Lozenge,
+  Link,
+  LinkButton,
+  ProgressBar,
+  DynamicTable,
+  SectionMessage,
+  Spinner,
+  useProductContext,
+} from "@forge/react";
 import { invoke } from "@forge/bridge";
+
+const TEST_APPEARANCE = {
+  PASS: "success",
+  FAIL: "removed",
+  BLOCKED: "moved",
+  SKIPPED: "default",
+  UNTESTED: "new",
+};
+
+function coverageAppearance(pct) {
+  if (pct >= 80) return "success";
+  if (pct >= 50) return "moved";
+  return "removed";
+}
 
 const App = () => {
   const context = useProductContext();
-  const issueKey = context && context.platformContext
-    ? context.platformContext.issueKey
-    : undefined;
+  const issueKey =
+    context && context.platformContext ? context.platformContext.issueKey : undefined;
   const [data, setData] = useState(undefined);
   const [error, setError] = useState(undefined);
 
@@ -17,35 +43,112 @@ const App = () => {
   }, []);
 
   if (error) {
-    return <Text>{String(error)}</Text>;
+    return (
+      <SectionMessage appearance="error">
+        <Text>{String(error)}</Text>
+      </SectionMessage>
+    );
   }
   if (!data) {
-    return <Text>Loading TestHub coverage…</Text>;
+    return <Spinner />;
   }
   if (data.error) {
-    return <Text>{data.error}</Text>;
+    return (
+      <SectionMessage appearance="warning">
+        <Text>{data.error}</Text>
+      </SectionMessage>
+    );
   }
 
+  const summary = data.summary;
+  const tests = data.tests || [];
+  const linkedBugs = data.linkedBugs || [];
+  const projectUrl =
+    tests.length > 0 && tests[0].url ? tests[0].url.split("/cases")[0] : undefined;
+
   return (
-    <>
-      <Heading as="h3">TestHub coverage</Heading>
-      {data.summary.total === 0 ? (
-        <Text>No tests are linked to this issue yet.</Text>
+    <Stack space="space.150">
+      <Inline space="space.100" alignBlock="center" shouldWrap>
+        <Heading as="h4">TestHub coverage</Heading>
+        <Lozenge appearance={coverageAppearance(summary.coverage)}>
+          {`${summary.coverage}% passing`}
+        </Lozenge>
+      </Inline>
+
+      <ProgressBar value={summary.coverage / 100} />
+
+      <Text>
+        {`${summary.total} test(s) · ${summary.passed} passed · ${summary.failed} failed`}
+      </Text>
+
+      {tests.length === 0 ? (
+        <SectionMessage appearance="information">
+          <Text>No tests are linked to this issue yet.</Text>
+        </SectionMessage>
       ) : (
-        <Text>
-          {`${data.summary.coverage}% passing · ${data.summary.total} test(s) · `}
-          {`${data.summary.passed} passed · ${data.summary.failed} failed`}
-        </Text>
+        <DynamicTable
+          head={{
+            cells: [
+              { key: "test", content: "Test" },
+              { key: "status", content: "Result" },
+              { key: "when", content: "Last run" },
+            ],
+          }}
+          rows={tests.map((test) => ({
+            key: test.id,
+            cells: [
+              {
+                key: "test",
+                content: test.url ? (
+                  <Link href={test.url} target="_blank">
+                    {`${test.key} ${test.title}`}
+                  </Link>
+                ) : (
+                  <Text>{`${test.key} ${test.title}`}</Text>
+                ),
+              },
+              {
+                key: "status",
+                content: (
+                  <Lozenge appearance={TEST_APPEARANCE[test.status] || "default"}>
+                    {test.status}
+                  </Lozenge>
+                ),
+              },
+              {
+                key: "when",
+                content: test.lastExecutedAt
+                  ? new Date(test.lastExecutedAt).toLocaleString()
+                  : "—",
+              },
+            ],
+          }))}
+        />
       )}
-      {(data.tests || []).map((test) => (
-        <Text key={test.id}>{`${test.status} — ${test.key} — ${test.title}`}</Text>
-      ))}
-      {(data.linkedBugs || []).length > 0 ? (
-        <Text>
-          {`Linked bugs: ${data.linkedBugs.map((bug) => bug.issueKey).join(", ")}`}
-        </Text>
+
+      {linkedBugs.length > 0 ? (
+        <Inline space="space.050" alignBlock="center" shouldWrap>
+          <Text>Linked bugs:</Text>
+          {linkedBugs.map((bug) =>
+            bug.url ? (
+              <Link key={bug.issueKey} href={bug.url} target="_blank">
+                {bug.issueKey}
+              </Link>
+            ) : (
+              <Text key={bug.issueKey}>{bug.issueKey}</Text>
+            ),
+          )}
+        </Inline>
       ) : null}
-    </>
+
+      {projectUrl ? (
+        <Inline>
+          <LinkButton href={projectUrl} target="_blank" appearance="primary">
+            Open in TestHub
+          </LinkButton>
+        </Inline>
+      ) : null}
+    </Stack>
   );
 };
 

@@ -54,6 +54,7 @@ export async function GET(request: Request) {
     : null;
   const browseUrl = (issueKey: string) =>
     connection ? `${connection.siteUrl}/browse/${issueKey}` : null;
+  const appBase = (process.env.APP_BASE_URL ?? "").replace(/\/$/, "");
 
   const issueKey = anchor?.issueKey ?? key;
   const issue = issueKey
@@ -130,6 +131,9 @@ export async function GET(request: Request) {
       runId: latest?.runId ?? null,
       project: testCase.project,
       suite: testCase.suite,
+      url: appBase
+        ? `${appBase}/projects/${testCase.project.id}/cases?case=${testCase.id}`
+        : null,
     };
   });
 
@@ -178,7 +182,12 @@ export async function GET(request: Request) {
 
   const bugMap = new Map<
     string,
-    { issueKey: string; summary: string | null; status: string | null }
+    {
+      issueKey: string;
+      summary: string | null;
+      status: string | null;
+      url: string | null;
+    }
   >();
   for (const testCase of cases) {
     for (const link of testCase.jiraLinks) {
@@ -191,6 +200,7 @@ export async function GET(request: Request) {
             issueKey: link.issueKey,
             summary: link.summary,
             status: link.status,
+            url: browseUrl(link.issueKey),
           });
         }
       }
