@@ -28,25 +28,25 @@ type SeedCase = {
   title: string;
   suite: string;
   priority: "HIGH" | "MEDIUM";
-  status: "PASSED" | "FAILED" | null;
+  status: "PASS" | "FAIL" | null;
   links: string[];
   comment?: string;
 };
 
 const CASES: SeedCase[] = [
-  { title: "Sign in with a valid email and password", suite: "Authentication", priority: "HIGH", status: "PASSED", links: ["SCRUM-5"] },
-  { title: "Sign in is rejected with an invalid password", suite: "Authentication", priority: "HIGH", status: "PASSED", links: ["SCRUM-5"] },
-  { title: "Password reset email is delivered", suite: "Authentication", priority: "HIGH", status: "FAILED", links: ["SCRUM-6", "SCRUM-15"], comment: "No email arrived within 10 minutes; reproduced across two providers." },
-  { title: "Password reset link expires after 30 minutes", suite: "Authentication", priority: "MEDIUM", status: "PASSED", links: ["SCRUM-6"] },
-  { title: "Update profile name and email", suite: "Account", priority: "MEDIUM", status: "PASSED", links: ["SCRUM-7"] },
-  { title: "Order history lists the last 10 orders", suite: "Account", priority: "MEDIUM", status: "PASSED", links: ["SCRUM-8"] },
-  { title: "Search returns relevant products", suite: "Catalogue", priority: "HIGH", status: "PASSED", links: ["SCRUM-9"] },
-  { title: "Search does not return duplicate products", suite: "Catalogue", priority: "MEDIUM", status: "FAILED", links: ["SCRUM-9", "SCRUM-16"], comment: "The same product is listed twice on page 2." },
-  { title: "Filter products by category", suite: "Catalogue", priority: "MEDIUM", status: "PASSED", links: ["SCRUM-10"] },
-  { title: "Add an item to the cart", suite: "Cart & Checkout", priority: "HIGH", status: "PASSED", links: ["SCRUM-11"] },
-  { title: "Apply a percentage discount code", suite: "Cart & Checkout", priority: "MEDIUM", status: "PASSED", links: ["SCRUM-12"] },
-  { title: "Cart total reflects the discount", suite: "Cart & Checkout", priority: "HIGH", status: "FAILED", links: ["SCRUM-12", "SCRUM-17"], comment: "Total shows the undiscounted amount." },
-  { title: "Check out with a saved card", suite: "Cart & Checkout", priority: "HIGH", status: "PASSED", links: ["SCRUM-13"] },
+  { title: "Sign in with a valid email and password", suite: "Authentication", priority: "HIGH", status: "PASS", links: ["SCRUM-5"] },
+  { title: "Sign in is rejected with an invalid password", suite: "Authentication", priority: "HIGH", status: "PASS", links: ["SCRUM-5"] },
+  { title: "Password reset email is delivered", suite: "Authentication", priority: "HIGH", status: "FAIL", links: ["SCRUM-6", "SCRUM-15"], comment: "No email arrived within 10 minutes; reproduced across two providers." },
+  { title: "Password reset link expires after 30 minutes", suite: "Authentication", priority: "MEDIUM", status: "PASS", links: ["SCRUM-6"] },
+  { title: "Update profile name and email", suite: "Account", priority: "MEDIUM", status: "PASS", links: ["SCRUM-7"] },
+  { title: "Order history lists the last 10 orders", suite: "Account", priority: "MEDIUM", status: "PASS", links: ["SCRUM-8"] },
+  { title: "Search returns relevant products", suite: "Catalogue", priority: "HIGH", status: "PASS", links: ["SCRUM-9"] },
+  { title: "Search does not return duplicate products", suite: "Catalogue", priority: "MEDIUM", status: "FAIL", links: ["SCRUM-9", "SCRUM-16"], comment: "The same product is listed twice on page 2." },
+  { title: "Filter products by category", suite: "Catalogue", priority: "MEDIUM", status: "PASS", links: ["SCRUM-10"] },
+  { title: "Add an item to the cart", suite: "Cart & Checkout", priority: "HIGH", status: "PASS", links: ["SCRUM-11"] },
+  { title: "Apply a percentage discount code", suite: "Cart & Checkout", priority: "MEDIUM", status: "PASS", links: ["SCRUM-12"] },
+  { title: "Cart total reflects the discount", suite: "Cart & Checkout", priority: "HIGH", status: "FAIL", links: ["SCRUM-12", "SCRUM-17"], comment: "Total shows the undiscounted amount." },
+  { title: "Check out with a saved card", suite: "Cart & Checkout", priority: "HIGH", status: "PASS", links: ["SCRUM-13"] },
   { title: "CI pipeline runs the E2E suite on push", suite: "Platform", priority: "MEDIUM", status: null, links: ["SCRUM-14"] },
 ];
 
@@ -160,7 +160,7 @@ async function main() {
   }
 
   console.log(
-    `Seeded "${PROJECT_KEY}" with ${CASES.length} cases linked to real Jira issues (${CASES.filter((c) => c.status === "FAILED").length} failing).`,
+    `Seeded "${PROJECT_KEY}" with ${CASES.length} cases linked to real Jira issues (${CASES.filter((c) => c.status === "FAIL").length} failing).`,
   );
   console.log(`Switch to the "${WORKSPACE_NAME}" workspace from the sidebar switcher.`);
 }

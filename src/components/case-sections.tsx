@@ -714,7 +714,7 @@ export function CaseJira({
   configured: boolean;
 }) {
   const failed =
-    testCase.executions.find((execution) => execution.status === "FAILED") ??
+    testCase.executions.find((execution) => execution.status === "FAIL") ??
     null;
   const latestExecution = testCase.executions[0] ?? null;
   const bugProjectKey = testCase.jiraLinks[0]?.projectKey ?? "";
@@ -722,7 +722,7 @@ export function CaseJira({
   const bugDescription = [
     `Failing test case: ${testCase.project.key}-${testCase.number} — ${testCase.title}`,
     failed
-      ? `Last result: FAILED (${new Date(failed.executedAt).toLocaleString()})`
+      ? `Last result: FAIL (${new Date(failed.executedAt).toLocaleString()})`
       : latestExecution
         ? `Latest result: ${latestExecution.status}`
         : "No execution recorded yet.",

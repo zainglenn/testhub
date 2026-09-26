@@ -3,8 +3,8 @@ import { isJiraEnabled } from "@/lib/jira/config";
 import { prisma } from "@/lib/prisma";
 
 const STATUS_LABEL: Record<string, string> = {
-  PASSED: "passed",
-  FAILED: "failed",
+  PASS: "passed",
+  FAIL: "failed",
   BLOCKED: "blocked",
   SKIPPED: "skipped",
   UNTESTED: "untested",

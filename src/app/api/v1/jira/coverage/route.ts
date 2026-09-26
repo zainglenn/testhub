@@ -136,10 +136,10 @@ export async function GET(request: Request) {
   const counts = { passed: 0, failed: 0, blocked: 0, skipped: 0, untested: 0 };
   for (const test of tests) {
     switch (test.status) {
-      case "PASSED":
+      case "PASS":
         counts.passed++;
         break;
-      case "FAILED":
+      case "FAIL":
         counts.failed++;
         break;
       case "BLOCKED":

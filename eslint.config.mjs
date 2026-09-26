@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Forge app has its own toolchain (forge lint).
+    "forge/**",
   ]),
 ]);
 
