@@ -5,6 +5,7 @@ import AddIcon from "@mui/icons-material/Add";
 import AdminPanelSettingsOutlinedIcon from "@mui/icons-material/AdminPanelSettingsOutlined";
 import AppsOutlinedIcon from "@mui/icons-material/AppsOutlined";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
 import AttachmentOutlinedIcon from "@mui/icons-material/AttachmentOutlined";
 import CheckIcon from "@mui/icons-material/Check";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
@@ -173,6 +174,7 @@ export default function AppShell({
         { href: `/projects/${activeProject.id}`, label: "Overview", icon: DashboardOutlinedIcon, exact: true },
         { href: `/projects/${activeProject.id}/cases`, label: "Test cases", icon: ListAltOutlinedIcon },
         { href: `/projects/${activeProject.id}/runs`, label: "Test runs", icon: PlayArrowOutlinedIcon },
+        { href: `/projects/${activeProject.id}/plans`, label: "Test plans", icon: AssignmentOutlinedIcon },
         { href: `/projects/${activeProject.id}/reports`, label: "Reports", icon: InsightsOutlinedIcon },
         { href: `/projects/${activeProject.id}/traceability`, label: "Traceability", icon: AccountTreeOutlinedIcon },
       ]

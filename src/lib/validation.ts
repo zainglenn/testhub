@@ -25,6 +25,19 @@ export const projectUpdateInput = z.object({
   description: optionalText,
 });
 
+export const planInput = z.object({
+  projectId: z.string().min(1),
+  name: z.string().trim().min(1, "Name is required").max(120),
+  description: optionalText,
+});
+
+export const planUpdateInput = z.object({
+  id: z.string().min(1),
+  name: z.string().trim().min(1, "Name is required").max(120),
+  description: optionalText,
+  status: z.enum(["OPEN", "COMPLETED"]).default("OPEN"),
+});
+
 export const suiteInput = z.object({
   projectId: z.string().min(1),
   parentId: z.string().min(1).optional().nullable(),
