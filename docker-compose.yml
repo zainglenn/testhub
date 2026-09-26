@@ -1,0 +1,41 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      # In-container Postgres. Migrations use DIRECT_URL; the app uses the pool.
+      DATABASE_URL: "postgresql://testhub:testhub@db:5432/testhub"
+      DIRECT_URL: "postgresql://testhub:testhub@db:5432/testhub"
+      APP_BASE_URL: "http://localhost:3000"
+      AUTH_SECRET: "change-me-to-a-long-random-string"
+      SUPABASE_URL: ""
+      SUPABASE_SERVICE_ROLE_KEY: ""
+      JIRA_ENABLED: "false"
+      JIRA_CLIENT_ID: ""
+      JIRA_CLIENT_SECRET: ""
+      JIRA_WEBHOOK_SECRET: ""
+      JIRA_PANEL_SECRET: ""
+      NODE_ENV: "production"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: testhub
+      POSTGRES_PASSWORD: testhub
+      POSTGRES_DB: testhub
+    volumes:
+      - testhub-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testhub"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  testhub-pg:

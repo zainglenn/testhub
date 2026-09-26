@@ -1,0 +1,458 @@
+// Test Management + Jira integration data model.
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Project {
+  id          String          @id @default(cuid())
+  workspaceId String?
+  workspace   Workspace?      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  key         String
+  name        String
+  description String?
+  createdById String?
+  createdBy   User?           @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  suites      TestSuite[]
+  testCases   TestCase[]
+  executions  TestExecution[]
+  runs        TestRun[]
+  tags        Tag[]
+  apiTokens   ApiToken[]
+
+  @@unique([workspaceId, key])
+  @@index([key])
+}
+
+model ApiToken {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name        String
+  tokenHash   String   @unique
+  prefix      String
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  lastUsedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+}
+
+model User {
+  id           String          @id @default(cuid())
+  email        String          @unique
+  name         String
+  passwordHash String
+  role         String          @default("MEMBER")
+  failedLoginCount Int         @default(0)
+  lockedUntil  DateTime?
+  createdAt    DateTime        @default(now())
+  projects     Project[]
+  testCases    TestCase[]
+  runs         TestRun[]
+  executions   TestExecution[]
+  apiTokens    ApiToken[]
+  workspaceMemberships WorkspaceMember[]
+  invitations  Invitation[]    @relation("InvitedBy")
+  groupMembers GroupMember[]
+  attachments  Attachment[]
+  auditLogs    AuditLog[]
+  sessions     Session[]
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  userAgent  String?
+  ip         String?
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model TestSuite {
+  id          String      @id @default(cuid())
+  projectId   String
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parentId    String?
+  parent      TestSuite?  @relation("SuiteHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children    TestSuite[] @relation("SuiteHierarchy")
+  name        String
+  description String?
+  order       Int         @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  testCases   TestCase[]
+
+  @@index([projectId])
+  @@index([parentId])
+}
+
+model TestCase {
+  id           String          @id @default(cuid())
+  projectId    String
+  project      Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  suiteId      String?
+  suite        TestSuite?      @relation(fields: [suiteId], references: [id], onDelete: SetNull)
+  number       Int
+  externalId   String?
+  title        String
+  description  String?
+  preconditions String?
+  priority     String          @default("MEDIUM")
+  status       String          @default("DRAFT")
+  createdById  String?
+  createdBy    User?           @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  steps         TestStep[]
+  jiraLinks     JiraIssueLink[]
+  executions    TestExecution[]
+  tags          Tag[]
+  runItems      TestRunItem[]
+  fieldValues   FieldValue[]
+
+  @@unique([projectId, number])
+  @@unique([projectId, externalId])
+  @@index([projectId])
+  @@index([suiteId])
+}
+
+model TestStep {
+  id             String   @id @default(cuid())
+  testCaseId     String
+  testCase       TestCase @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  order          Int
+  action         String
+  expectedResult String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([testCaseId, order])
+  @@index([testCaseId])
+}
+
+model JiraConnection {
+  id           String   @id @default(cuid())
+  workspaceId  String?
+  workspace    Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  cloudId      String
+  siteUrl      String
+  siteName     String?
+  accessToken  String
+  refreshToken String?
+  expiresAt    DateTime
+  scopes       String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([workspaceId, cloudId])
+  @@index([workspaceId])
+}
+
+model JiraIssueLink {
+  id         String   @id @default(cuid())
+  testCaseId String
+  testCase   TestCase @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  issueKey   String
+  issueId    String?
+  summary    String?
+  issueType  String?
+  status     String?
+  projectKey String?
+  url        String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([testCaseId, issueKey])
+  @@index([testCaseId])
+  @@index([issueKey])
+}
+
+model TestExecution {
+  id         String   @id @default(cuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  testCaseId String
+  testCase   TestCase @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  runId      String?
+  run        TestRun? @relation(fields: [runId], references: [id], onDelete: Cascade)
+  status     String
+  comment    String?
+  executedById String?
+  executedBy   User?    @relation(fields: [executedById], references: [id], onDelete: SetNull)
+  executedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@unique([runId, testCaseId])
+  @@index([projectId, executedAt])
+  @@index([testCaseId])
+  @@index([runId])
+}
+
+model TestRun {
+  id          String          @id @default(cuid())
+  projectId   String
+  project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  environment String?
+  status      String          @default("OPEN")
+  completedAt DateTime?
+  createdById String?
+  createdBy   User?           @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  executions  TestExecution[]
+  items       TestRunItem[]
+
+  @@index([projectId])
+}
+
+model TestRunItem {
+  id         String   @id @default(cuid())
+  runId      String
+  run        TestRun  @relation(fields: [runId], references: [id], onDelete: Cascade)
+  testCaseId String
+  testCase   TestCase @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  order      Int      @default(0)
+
+  @@unique([runId, testCaseId])
+  @@index([runId])
+  @@index([testCaseId])
+}
+
+model Tag {
+  id        String     @id @default(cuid())
+  projectId String
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  nameKey   String
+  createdAt DateTime   @default(now())
+  testCases TestCase[]
+
+  @@unique([projectId, nameKey])
+  @@index([projectId])
+}
+
+model Workspace {
+  id          String            @id @default(cuid())
+  name        String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  members     WorkspaceMember[]
+  groups      Group[]
+  roles       Role[]
+  projects    Project[]
+  fields      Field[]
+  parameters  Parameter[]
+  sharedSteps SharedStep[]
+  tags        WorkspaceTag[]
+  attachments Attachment[]
+  auditLogs   AuditLog[]
+  ssoConfig   SsoConfig?
+  invitations Invitation[]
+  jiraConnections JiraConnection[]
+}
+
+model WorkspaceMember {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId      String?
+  role        Role?     @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+
+  @@unique([workspaceId, userId])
+  @@index([workspaceId])
+  @@index([userId])
+}
+
+model Invitation {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  email       String
+  roleId      String?
+  role        Role?     @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  token       String    @unique
+  status      String    @default("PENDING")
+  invitedById String?
+  invitedBy   User?     @relation("InvitedBy", fields: [invitedById], references: [id], onDelete: SetNull)
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@unique([workspaceId, email])
+  @@index([workspaceId])
+  @@index([email])
+}
+
+model Group {
+  id          String        @id @default(cuid())
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  createdAt   DateTime      @default(now())
+  members     GroupMember[]
+
+  @@index([workspaceId])
+}
+
+model GroupMember {
+  id      String @id @default(cuid())
+  groupId String
+  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+}
+
+model Role {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  permissions String    @default("")
+  createdAt   DateTime  @default(now())
+  members     WorkspaceMember[]
+  invitations Invitation[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+}
+
+model Field {
+  id          String       @id @default(cuid())
+  workspaceId String
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  type        String       @default("TEXT")
+  entity      String       @default("CASE")
+  options     String       @default("")
+  required    Boolean      @default(false)
+  order       Int          @default(0)
+  createdAt   DateTime     @default(now())
+  values      FieldValue[]
+
+  @@index([workspaceId])
+}
+
+model FieldValue {
+  id         String   @id @default(cuid())
+  fieldId    String
+  field      Field    @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  testCaseId String
+  testCase   TestCase @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  value      String   @default("")
+
+  @@unique([fieldId, testCaseId])
+  @@index([testCaseId])
+}
+
+model Parameter {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  values      String    @default("")
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId])
+}
+
+model SharedStep {
+  id          String           @id @default(cuid())
+  workspaceId String
+  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title       String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  items       SharedStepItem[]
+
+  @@index([workspaceId])
+}
+
+model SharedStepItem {
+  id             String     @id @default(cuid())
+  sharedStepId   String
+  sharedStep     SharedStep @relation(fields: [sharedStepId], references: [id], onDelete: Cascade)
+  order          Int
+  action         String
+  expectedResult String?
+
+  @@unique([sharedStepId, order])
+  @@index([sharedStepId])
+}
+
+model WorkspaceTag {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  nameKey     String
+  createdAt   DateTime  @default(now())
+
+  @@unique([workspaceId, nameKey])
+  @@index([workspaceId])
+}
+
+model Attachment {
+  id           String    @id @default(cuid())
+  workspaceId  String
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  filename     String
+  mime         String?
+  size         Int
+  storageKey   String
+  uploadedById String?
+  uploadedBy   User?     @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime  @default(now())
+
+  @@index([workspaceId])
+}
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  actorId     String?
+  actor       User?     @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action      String
+  entityType  String?
+  entityId    String?
+  metadata    String?
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId, createdAt])
+}
+
+model SsoConfig {
+  id           String    @id @default(cuid())
+  workspaceId  String    @unique
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  enabled      Boolean   @default(false)
+  provider     String    @default("OIDC")
+  issuerUrl    String?
+  clientId     String?
+  clientSecret String?
+  updatedAt    DateTime  @updatedAt
+}
