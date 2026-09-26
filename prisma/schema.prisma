@@ -17,6 +17,8 @@ model Project {
   key         String
   name        String
   description String?
+  restricted  Boolean         @default(false)
+  requirementJql String?
   createdById String?
   createdBy   User?           @relation(fields: [createdById], references: [id], onDelete: SetNull)
   createdAt   DateTime        @default(now())
@@ -26,11 +28,42 @@ model Project {
   executions  TestExecution[]
   runs        TestRun[]
   plans       TestPlan[]
+  members     ProjectMember[]
+  requirements Requirement[]
   tags        Tag[]
   apiTokens   ApiToken[]
 
   @@unique([workspaceId, key])
   @@index([key])
+}
+
+model ProjectMember {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+}
+
+model Requirement {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  issueKey  String
+  summary   String?
+  status    String?
+  issueType String?
+  url       String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, issueKey])
+  @@index([projectId])
 }
 
 model ApiToken {
@@ -65,6 +98,7 @@ model User {
   assignedRuns TestRun[]       @relation("RunAssignee")
   apiTokens    ApiToken[]
   workspaceMemberships WorkspaceMember[]
+  projectMemberships ProjectMember[]
   invitations  Invitation[]    @relation("InvitedBy")
   groupMembers GroupMember[]
   attachments  Attachment[]

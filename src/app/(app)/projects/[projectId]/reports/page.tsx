@@ -15,6 +15,7 @@ import {
 import { StatCard } from "@/components/ui";
 import { executionTrend, latestByCase, summarizeLatest } from "@/lib/metrics";
 import { prisma } from "@/lib/prisma";
+import { viewerHasProjectAccess } from "@/lib/project-access";
 import { getWorkspace } from "@/lib/workspace";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +35,7 @@ export default async function ProjectReportsPage(
     },
   });
 
-  if (!project || (project.workspaceId && project.workspaceId !== workspace.id)) {
+  if (!project || !(await viewerHasProjectAccess(project, workspace.id))) {
     notFound();
   }
 

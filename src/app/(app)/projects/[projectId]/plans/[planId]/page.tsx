@@ -21,6 +21,7 @@ import {
 } from "@/lib/actions/plans";
 import { RUN_COLORS } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
+import { viewerHasProjectAccess } from "@/lib/project-access";
 import { getWorkspace } from "@/lib/workspace";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +35,7 @@ export default async function TestPlanPage(
   const plan = await prisma.testPlan.findUnique({
     where: { id: planId },
     include: {
-      project: { select: { id: true, key: true, name: true, workspaceId: true } },
+      project: { select: { id: true, key: true, name: true, workspaceId: true, restricted: true } },
       runs: {
         orderBy: { createdAt: "desc" },
         include: {
@@ -48,7 +49,7 @@ export default async function TestPlanPage(
   if (
     !plan ||
     plan.projectId !== projectId ||
-    (plan.project.workspaceId && plan.project.workspaceId !== workspace.id)
+    !(await viewerHasProjectAccess(plan.project, workspace.id))
   ) {
     notFound();
   }

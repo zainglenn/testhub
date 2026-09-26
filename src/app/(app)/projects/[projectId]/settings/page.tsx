@@ -1,11 +1,15 @@
 import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
+import Checkbox from "@mui/material/Checkbox";
 import Divider from "@mui/material/Divider";
+import FormControlLabel from "@mui/material/FormControlLabel";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
+import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
@@ -14,10 +18,16 @@ import { ActionForm } from "@/components/action-form";
 import { ConfirmButton } from "@/components/confirm-button";
 import { CreateTokenForm } from "@/components/create-token-form";
 import { FormDialog } from "@/components/form-dialog";
+import {
+  addProjectMember,
+  removeProjectMember,
+  setProjectRestricted,
+} from "@/lib/actions/project-access";
 import { deleteProject, updateProject } from "@/lib/actions/projects";
 import { deleteApiToken } from "@/lib/actions/tokens";
 import { deleteTag, renameTag } from "@/lib/actions/tags";
 import { prisma } from "@/lib/prisma";
+import { viewerHasProjectAccess } from "@/lib/project-access";
 import { getWorkspace } from "@/lib/workspace";
 
 export const dynamic = "force-dynamic";
@@ -41,9 +51,24 @@ export default async function ProjectSettingsPage(
     },
   });
 
-  if (!project || (project.workspaceId && project.workspaceId !== workspace.id)) {
+  if (!project || !(await viewerHasProjectAccess(project, workspace.id))) {
     notFound();
   }
+
+  const [workspaceMembers, projectMemberRows] = await Promise.all([
+    prisma.workspaceMember.findMany({
+      where: { workspaceId: workspace.id },
+      select: { user: { select: { id: true, name: true, email: true } } },
+    }),
+    prisma.projectMember.findMany({
+      where: { projectId: project.id },
+      select: { userId: true },
+    }),
+  ]);
+  const projectMemberIds = new Set(projectMemberRows.map((row) => row.userId));
+  const allMembers = workspaceMembers.map((row) => row.user);
+  const projectMembers = allMembers.filter((user) => projectMemberIds.has(user.id));
+  const memberCandidates = allMembers.filter((user) => !projectMemberIds.has(user.id));
 
   return (
     <Stack spacing={3} sx={{ maxWidth: 720 }}>
@@ -86,6 +111,101 @@ export default async function ProjectSettingsPage(
               defaultValue={project.description ?? ""}
             />
           </ActionForm>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent>
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            Access
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Restrict this project to specific workspace members. Administrators
+            and project managers always have access.
+          </Typography>
+          <Box component="form" action={setProjectRestricted}>
+            <input type="hidden" name="id" value={project.id} />
+            <FormControlLabel
+              control={
+                <Checkbox name="restricted" defaultChecked={project.restricted} />
+              }
+              label="Restrict access to members"
+            />
+            <Box sx={{ mt: 1 }}>
+              <Button type="submit" variant="outlined" size="small">
+                Save access
+              </Button>
+            </Box>
+          </Box>
+
+          {project.restricted ? (
+            <Box sx={{ mt: 2 }}>
+              <Stack
+                direction="row"
+                sx={{
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  mb: 1,
+                }}
+              >
+                <Typography variant="subtitle2">Members</Typography>
+                {memberCandidates.length > 0 ? (
+                  <FormDialog
+                    action={addProjectMember}
+                    hidden={{ projectId: project.id }}
+                    title="Add member"
+                    description="Grant a workspace member access to this project."
+                    triggerLabel="Add member"
+                    triggerVariant="outlined"
+                    submitLabel="Add member"
+                    successMessage="Member added"
+                  >
+                    <TextField select name="userId" label="Member" defaultValue="" required>
+                      {memberCandidates.map((user) => (
+                        <MenuItem key={user.id} value={user.id}>
+                          {user.name}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </FormDialog>
+                ) : null}
+              </Stack>
+              {projectMembers.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  No members yet.
+                </Typography>
+              ) : (
+                projectMembers.map((user) => (
+                  <Stack
+                    key={user.id}
+                    direction="row"
+                    sx={{
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      py: 0.5,
+                    }}
+                  >
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography variant="body2">{user.name}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {user.email}
+                      </Typography>
+                    </Box>
+                    <ConfirmButton
+                      action={removeProjectMember}
+                      hidden={{ projectId: project.id, userId: user.id }}
+                      title="Remove member?"
+                      description={`Remove ${user.name} from this project?`}
+                      confirmLabel="Remove"
+                      iconOnly
+                      ariaLabel={`Remove ${user.name}`}
+                      icon={<DeleteOutlinedIcon fontSize="small" />}
+                    />
+                  </Stack>
+                ))
+              )}
+            </Box>
+          ) : null}
         </CardContent>
       </Card>
 

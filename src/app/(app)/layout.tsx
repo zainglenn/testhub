@@ -6,6 +6,7 @@ import { effectivePermissions } from "@/lib/authz";
 import { isJiraEnabled } from "@/lib/jira/config";
 import { getJiraConnection } from "@/lib/jira/client";
 import { prisma } from "@/lib/prisma";
+import { projectAccessContext, visibleProjectWhere } from "@/lib/project-access";
 import { getWorkspace, listWorkspaces } from "@/lib/workspace";
 
 export const dynamic = "force-dynamic";
@@ -22,11 +23,15 @@ export default async function AppLayout({
 
   const jiraEnabled = isJiraEnabled();
   const workspace = await getWorkspace();
+  const access = await projectAccessContext();
 
   const [projects, jira, memberships] = await Promise.all([
     prisma.project
       .findMany({
-        where: { workspaceId: workspace.id },
+        where: {
+          workspaceId: workspace.id,
+          ...visibleProjectWhere(session.userId, access?.canManageAll ?? false),
+        },
         select: { id: true, key: true, name: true },
         orderBy: { name: "asc" },
       })

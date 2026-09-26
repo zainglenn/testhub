@@ -1,5 +1,4 @@
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
@@ -12,8 +11,11 @@ import TableRow from "@mui/material/TableRow";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { notFound } from "next/navigation";
+import { ActionForm } from "@/components/action-form";
 import { StatCard } from "@/components/ui";
+import { syncRequirements } from "@/lib/actions/requirements";
 import { prisma } from "@/lib/prisma";
+import { viewerHasProjectAccess } from "@/lib/project-access";
 import { buildTraceability } from "@/lib/traceability";
 import { getWorkspace } from "@/lib/workspace";
 
@@ -29,69 +31,70 @@ export default async function TraceabilityPage(
   props: PageProps<"/projects/[projectId]/traceability">,
 ) {
   const { projectId } = await props.params;
-  const { jql: jqlParam } = await props.searchParams;
 
   const workspace = await getWorkspace();
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { id: true, key: true, name: true, workspaceId: true },
+    select: { id: true, key: true, name: true, workspaceId: true, restricted: true },
   });
-  if (!project || (project.workspaceId && project.workspaceId !== workspace.id)) {
+  if (!project || !(await viewerHasProjectAccess(project, workspace.id))) {
     notFound();
   }
 
-  const jql =
-    typeof jqlParam === "string" && jqlParam.trim()
-      ? jqlParam.trim()
-      : `project = ${project.key} AND issuetype in (Epic, Story) ORDER BY created ASC`;
-
-  const data = await buildTraceability(project.id, jql);
+  const data = await buildTraceability(project.id);
   const requirements = data?.requirements ?? [];
   const total = requirements.length;
-  const fullyCovered = requirements.filter(
-    (requirement) => requirement.coverage >= 80,
-  ).length;
-  const gaps = requirements.filter(
-    (requirement) => requirement.tests.length === 0,
-  ).length;
-  const failing = requirements.filter(
-    (requirement) => requirement.failed > 0,
-  ).length;
+  const fullyCovered = requirements.filter((r) => r.coverage >= 80).length;
+  const gaps = requirements.filter((r) => r.tests.length === 0).length;
+  const failing = requirements.filter((r) => r.failed > 0).length;
 
   return (
     <Stack spacing={3}>
       <Box>
         <Typography variant="h1">Traceability</Typography>
         <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 720 }}>
-          Requirements pulled from Jira via JQL, traced to TestHub cases, their
-          latest results and any linked bugs.
+          Requirements synced from Jira, traced to TestHub cases, their latest
+          results and any linked bugs.
         </Typography>
       </Box>
 
-      <Box component="form" method="get">
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-          <TextField
-            name="jql"
-            label="JQL"
-            fullWidth
-            size="small"
-            defaultValue={jql}
-            slotProps={{
-              htmlInput: {
-                style: { fontFamily: "var(--font-geist-mono), monospace" },
-              },
-            }}
-          />
-          <Button type="submit" variant="contained" sx={{ flexShrink: 0 }}>
-            Run
-          </Button>
-        </Stack>
-      </Box>
+      <Card>
+        <CardContent>
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            Sync requirements
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Pulls matching issues from the connected Jira site and stores them so
+            the matrix works offline.
+          </Typography>
+          <ActionForm
+            action={syncRequirements}
+            hidden={{ projectId: project.id }}
+            submitLabel="Sync from Jira"
+            successMessage="Requirements synced"
+          >
+            <TextField
+              name="jql"
+              label="JQL"
+              defaultValue={data?.jql}
+              fullWidth
+              slotProps={{
+                htmlInput: {
+                  style: { fontFamily: "var(--font-geist-mono), monospace" },
+                },
+              }}
+            />
+          </ActionForm>
+        </CardContent>
+      </Card>
 
-      {data?.error ? (
-        <Card>
-          <CardContent>
-            <Typography color="text.secondary">{data.error}</Typography>
+      {total === 0 ? (
+        <Card sx={{ borderStyle: "dashed" }}>
+          <CardContent sx={{ textAlign: "center", py: 6 }}>
+            <Typography color="text.secondary">
+              No requirements stored yet. Use <strong>Sync from Jira</strong> to
+              pull them in.
+            </Typography>
           </CardContent>
         </Card>
       ) : (
@@ -198,19 +201,6 @@ export default async function TraceabilityPage(
                         </TableCell>
                       </TableRow>
                     ))}
-                    {requirements.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={8}>
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{ py: 3, textAlign: "center" }}
-                          >
-                            No requirements matched this JQL.
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
-                    ) : null}
                   </TableBody>
                 </Table>
               </Box>
@@ -220,7 +210,7 @@ export default async function TraceabilityPage(
           <Typography variant="caption" color="text.secondary">
             Requirement links open in Jira
             {data?.siteUrl ? ` (${data.siteUrl.replace("https://", "")})` : ""}.
-            Test keys link to their case in TestHub.
+            {` ${data?.storedCount ?? 0} requirement(s) stored.`}
           </Typography>
         </>
       )}

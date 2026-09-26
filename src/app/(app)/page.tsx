@@ -20,6 +20,7 @@ import { getJiraConfig, isJiraEnabled } from "@/lib/jira/config";
 import { getJiraConnection } from "@/lib/jira/client";
 import { executionTrend, latestByCase, summarizeLatest } from "@/lib/metrics";
 import { prisma } from "@/lib/prisma";
+import { projectAccessContext, visibleProjectWhere } from "@/lib/project-access";
 import { getWorkspace } from "@/lib/workspace";
 
 export const dynamic = "force-dynamic";
@@ -51,9 +52,14 @@ export default async function HomePage(props: PageProps<"/">) {
   const connection = jiraEnabled ? await getJiraConnection() : null;
 
   const workspace = await getWorkspace();
+  const access = await projectAccessContext();
+  const visible = visibleProjectWhere(
+    access?.userId ?? "",
+    access?.canManageAll ?? false,
+  );
 
   const projects = await prisma.project.findMany({
-    where: { workspaceId: workspace.id },
+    where: { workspaceId: workspace.id, ...visible },
     orderBy: { createdAt: "asc" },
     include: {
       _count: { select: { testCases: true, suites: true } },
@@ -62,12 +68,16 @@ export default async function HomePage(props: PageProps<"/">) {
 
   const [projectCount, testCaseCount, suiteCount, jiraLinkedCount] =
     await Promise.all([
-      prisma.project.count({ where: { workspaceId: workspace.id } }),
-      prisma.testCase.count({ where: { project: { workspaceId: workspace.id } } }),
-      prisma.testSuite.count({ where: { project: { workspaceId: workspace.id } } }),
+      prisma.project.count({ where: { workspaceId: workspace.id, ...visible } }),
+      prisma.testCase.count({
+        where: { project: { workspaceId: workspace.id, ...visible } },
+      }),
+      prisma.testSuite.count({
+        where: { project: { workspaceId: workspace.id, ...visible } },
+      }),
       prisma.testCase.count({
         where: {
-          project: { workspaceId: workspace.id },
+          project: { workspaceId: workspace.id, ...visible },
           jiraLinks: { some: {} },
         },
       }),
@@ -82,7 +92,7 @@ export default async function HomePage(props: PageProps<"/">) {
 
   const executions = await prisma.testExecution.findMany({
     where: {
-      project: { workspaceId: workspace.id },
+      project: { workspaceId: workspace.id, ...visible },
       executedAt: { gte: since },
     },
     select: { testCaseId: true, status: true, executedAt: true },

@@ -1,9 +1,7 @@
 import {
   getJiraConnectionForWorkspace,
   searchIssues,
-  type JiraIssue,
 } from "@/lib/jira/client";
-import { isJiraEnabled } from "@/lib/jira/config";
 import { prisma } from "@/lib/prisma";
 
 export const DEFAULT_REQUIREMENTS_JQL =
@@ -35,55 +33,87 @@ export type Traceability = {
   siteUrl: string | null;
   jql: string;
   requirements: RequirementRow[];
-  error: string | null;
+  storedCount: number;
 };
 
-/**
- * Builds a Requirement -> Tests -> Results -> Bugs view by running a JQL query
- * against the connected Jira site and joining the results with the test cases
- * that link to those issues.
- */
-export async function buildTraceability(
+/** Pulls requirements from Jira for a JQL query and upserts them locally. */
+export async function syncProjectRequirements(
   projectId: string,
   jql: string,
-): Promise<Traceability | null> {
+): Promise<{ count: number; error: string | null }> {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { id: true, key: true, name: true, workspaceId: true },
+    select: { id: true, workspaceId: true },
   });
-  if (!project) return null;
-
-  const base = {
-    project: { id: project.id, key: project.key, name: project.name },
-    siteUrl: null as string | null,
-    jql,
-    requirements: [] as RequirementRow[],
-    error: null as string | null,
-  };
-
-  if (!isJiraEnabled()) {
-    return { ...base, error: "Jira is not enabled. Set JIRA_ENABLED and connect a site." };
-  }
+  if (!project) return { count: 0, error: "Project not found." };
 
   const connection = project.workspaceId
     ? await getJiraConnectionForWorkspace(project.workspaceId).catch(() => null)
     : null;
   if (!connection) {
-    return { ...base, error: "Connect Jira to load requirements." };
+    return { count: 0, error: "Connect Jira to sync requirements." };
   }
 
-  let issues: JiraIssue[] = [];
+  let issues;
   try {
     issues = await searchIssues(jql, 50);
   } catch (error) {
     return {
-      ...base,
-      siteUrl: connection.siteUrl,
+      count: 0,
       error: error instanceof Error ? error.message : "Failed to query Jira.",
     };
   }
 
-  const keys = issues.map((issue) => issue.key);
+  let count = 0;
+  for (const issue of issues) {
+    const data = {
+      summary: issue.fields.summary ?? null,
+      status: issue.fields.status?.name ?? null,
+      issueType: issue.fields.issuetype?.name ?? null,
+      url: `${connection.siteUrl}/browse/${issue.key}`,
+    };
+    await prisma.requirement.upsert({
+      where: { projectId_issueKey: { projectId, issueKey: issue.key } },
+      create: { projectId, issueKey: issue.key, ...data },
+      update: data,
+    });
+    count += 1;
+  }
+
+  await prisma.project.update({
+    where: { id: projectId },
+    data: { requirementJql: jql },
+  });
+
+  return { count, error: null };
+}
+
+/** Builds the Requirement -> Tests -> Results -> Bugs matrix from stored data. */
+export async function buildTraceability(
+  projectId: string,
+): Promise<Traceability | null> {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: {
+      id: true,
+      key: true,
+      name: true,
+      workspaceId: true,
+      requirementJql: true,
+    },
+  });
+  if (!project) return null;
+
+  const connection = project.workspaceId
+    ? await getJiraConnectionForWorkspace(project.workspaceId).catch(() => null)
+    : null;
+
+  const stored = await prisma.requirement.findMany({
+    where: { projectId },
+    orderBy: { issueKey: "asc" },
+  });
+  const keys = stored.map((requirement) => requirement.issueKey);
+
   const links = keys.length
     ? await prisma.jiraIssueLink.findMany({
         where: { issueKey: { in: keys }, testCase: { projectId } },
@@ -114,8 +144,8 @@ export async function buildTraceability(
     byKey.set(link.issueKey, list);
   }
 
-  const requirements: RequirementRow[] = issues.map((issue) => {
-    const rows = byKey.get(issue.key) ?? [];
+  const requirements: RequirementRow[] = stored.map((requirement) => {
+    const rows = byKey.get(requirement.issueKey) ?? [];
     const tests: TraceabilityTest[] = rows.map((row) => ({
       id: row.testCase.id,
       key: `${row.testCase.project.key}-${row.testCase.number}`,
@@ -133,18 +163,21 @@ export async function buildTraceability(
     const bugs = new Set<string>();
     for (const row of rows) {
       for (const link of row.testCase.jiraLinks) {
-        if ((link.issueType ?? "").toLowerCase() === "bug" && link.issueKey !== issue.key) {
+        if (
+          (link.issueType ?? "").toLowerCase() === "bug" &&
+          link.issueKey !== requirement.issueKey
+        ) {
           bugs.add(link.issueKey);
         }
       }
     }
 
     return {
-      key: issue.key,
-      summary: issue.fields.summary ?? null,
-      status: issue.fields.status?.name ?? null,
-      issueType: issue.fields.issuetype?.name ?? null,
-      url: `${connection.siteUrl}/browse/${issue.key}`,
+      key: requirement.issueKey,
+      summary: requirement.summary,
+      status: requirement.status,
+      issueType: requirement.issueType,
+      url: requirement.url,
       tests,
       passed,
       failed,
@@ -154,5 +187,11 @@ export async function buildTraceability(
     };
   });
 
-  return { ...base, siteUrl: connection.siteUrl, requirements };
+  return {
+    project: { id: project.id, key: project.key, name: project.name },
+    siteUrl: connection?.siteUrl ?? null,
+    jql: project.requirementJql ?? DEFAULT_REQUIREMENTS_JQL,
+    requirements,
+    storedCount: stored.length,
+  };
 }

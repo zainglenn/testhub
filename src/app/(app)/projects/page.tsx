@@ -10,14 +10,19 @@ import { FormDialog } from "@/components/form-dialog";
 import { createProject } from "@/lib/actions/projects";
 import { plural } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { projectAccessContext, visibleProjectWhere } from "@/lib/project-access";
 import { getWorkspace } from "@/lib/workspace";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProjectsPage() {
   const workspace = await getWorkspace();
+  const access = await projectAccessContext();
   const projects = await prisma.project.findMany({
-    where: { workspaceId: workspace.id },
+    where: {
+      workspaceId: workspace.id,
+      ...visibleProjectWhere(access?.userId ?? "", access?.canManageAll ?? false),
+    },
     orderBy: { createdAt: "asc" },
     include: { _count: { select: { testCases: true, suites: true, runs: true } } },
   });

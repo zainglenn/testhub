@@ -28,6 +28,7 @@ import { PRIORITIES } from "@/lib/constants";
 import { getJiraConfig, isJiraEnabled } from "@/lib/jira/config";
 import { getJiraConnection } from "@/lib/jira/client";
 import { prisma } from "@/lib/prisma";
+import { viewerHasProjectAccess } from "@/lib/project-access";
 import { getWorkspace } from "@/lib/workspace";
 import {
   buildSuiteTree,
@@ -80,7 +81,7 @@ export default async function ProjectCasesPage(
     },
   });
 
-  if (!project || (project.workspaceId && project.workspaceId !== workspace.id)) {
+  if (!project || !(await viewerHasProjectAccess(project, workspace.id))) {
     notFound();
   }
 

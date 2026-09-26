@@ -10,6 +10,7 @@ import { notFound } from "next/navigation";
 import { FormDialog } from "@/components/form-dialog";
 import { createTestPlan } from "@/lib/actions/plans";
 import { prisma } from "@/lib/prisma";
+import { viewerHasProjectAccess } from "@/lib/project-access";
 import { getWorkspace } from "@/lib/workspace";
 
 export const dynamic = "force-dynamic";
@@ -22,9 +23,9 @@ export default async function ProjectPlansPage(
   const workspace = await getWorkspace();
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { id: true, key: true, name: true, workspaceId: true },
+    select: { id: true, key: true, name: true, workspaceId: true, restricted: true },
   });
-  if (!project || (project.workspaceId && project.workspaceId !== workspace.id)) {
+  if (!project || !(await viewerHasProjectAccess(project, workspace.id))) {
     notFound();
   }
 

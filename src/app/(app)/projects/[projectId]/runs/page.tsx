@@ -15,6 +15,7 @@ import { RunScopeFields } from "@/components/run-scope-fields";
 import { createTestRun } from "@/lib/actions/runs";
 import { RUN_COLORS } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
+import { viewerHasProjectAccess } from "@/lib/project-access";
 import { buildSuiteTree, flattenSuites } from "@/lib/suites";
 import { getWorkspace } from "@/lib/workspace";
 
@@ -43,7 +44,7 @@ export default async function ProjectRunsPage(
     },
   });
 
-  if (!project || (project.workspaceId && project.workspaceId !== workspace.id)) {
+  if (!project || !(await viewerHasProjectAccess(project, workspace.id))) {
     notFound();
   }
 
