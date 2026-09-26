@@ -45,6 +45,7 @@ import {
   unlinkIssue,
 } from "@/lib/actions/jira";
 import { addTagToCase, removeTagFromCase } from "@/lib/actions/tags";
+import { setCaseParameters } from "@/lib/actions/case-parameters";
 import {
   CASE_STATUSES,
   EXECUTION_COLORS,
@@ -58,9 +59,11 @@ import type {
   Project,
   Tag,
   TestCase,
+  TestCaseParameter,
   TestExecution,
   TestStep,
   TestSuite,
+  Parameter,
 } from "@/generated/prisma/client";
 
 const MONO = "var(--font-geist-mono), monospace";
@@ -74,6 +77,7 @@ export type CaseWithRelations = TestCase & {
   createdBy: { name: string } | null;
   fieldValues: FieldValue[];
   jiraLinks: JiraIssueLink[];
+  parameters: (TestCaseParameter & { parameter: Parameter })[];
 };
 
 export function CasePanelHeader({
@@ -508,7 +512,13 @@ export function CaseGeneralEdit({
   );
 }
 
-export function CaseProperties({ testCase }: { testCase: CaseWithRelations }) {
+export function CaseProperties({
+  testCase,
+  workspaceParameters,
+}: {
+  testCase: CaseWithRelations;
+  workspaceParameters: { id: string; name: string; values: string }[];
+}) {
   return (
     <Stack spacing={2}>
       <Box>
@@ -609,6 +619,71 @@ export function CaseProperties({ testCase }: { testCase: CaseWithRelations }) {
           sx={{ maxWidth: 260 }}
         />
       </ActionForm>
+
+      <Divider />
+      <Stack
+        direction="row"
+        sx={{ justifyContent: "space-between", alignItems: "center" }}
+      >
+        <Typography variant="subtitle2">Parameters</Typography>
+        <FormDialog
+          action={setCaseParameters}
+          hidden={{ testCaseId: testCase.id }}
+          title="Case parameters"
+          description="Attach workspace parameters to make this a data-driven test."
+          triggerLabel="Edit parameters"
+          triggerVariant="outlined"
+          submitLabel="Save parameters"
+          successMessage="Parameters updated"
+        >
+          {workspaceParameters.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              No workspace parameters yet. Create them under Workspace →
+              Parameters.
+            </Typography>
+          ) : (
+            workspaceParameters.map((parameter) => (
+              <FormControlLabel
+                key={parameter.id}
+                control={
+                  <Checkbox
+                    name="parameterId"
+                    value={parameter.id}
+                    defaultChecked={testCase.parameters.some(
+                      (entry) => entry.parameterId === parameter.id,
+                    )}
+                  />
+                }
+                label={
+                  parameter.values
+                    ? `${parameter.name} (${parameter.values})`
+                    : parameter.name
+                }
+              />
+            ))
+          )}
+        </FormDialog>
+      </Stack>
+      {testCase.parameters.length > 0 ? (
+        <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap" }}>
+          {testCase.parameters.map((entry) => (
+            <Chip
+              key={entry.id}
+              size="small"
+              variant="outlined"
+              label={
+                entry.parameter.values
+                  ? `${entry.parameter.name}: ${entry.parameter.values}`
+                  : entry.parameter.name
+              }
+            />
+          ))}
+        </Stack>
+      ) : (
+        <Typography variant="body2" color="text.secondary">
+          Not parameterized.
+        </Typography>
+      )}
     </Stack>
   );
 }
@@ -644,6 +719,19 @@ export function CaseRuns({ testCase }: { testCase: CaseWithRelations }) {
             ))}
           </TextField>
           <TextField name="comment" label="Comment" multiline minRows={2} />
+          {testCase.parameters.length > 0 ? (
+            <TextField
+              name="dataset"
+              label="Dataset"
+              placeholder={
+                testCase.parameters
+                  .map((entry) => entry.parameter.values)
+                  .filter(Boolean)
+                  .join(" / ") || "e.g. Chrome"
+              }
+              helperText="Record a separate result per dataset."
+            />
+          ) : null}
         </FormDialog>
       </Stack>
 
@@ -669,6 +757,13 @@ export function CaseRuns({ testCase }: { testCase: CaseWithRelations }) {
                     label={execution.status}
                     color={EXECUTION_COLORS[execution.status] ?? "default"}
                   />
+                  {execution.dataset ? (
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      label={execution.dataset}
+                    />
+                  ) : null}
                   <Typography variant="caption" color="text.secondary">
                     {new Date(execution.executedAt).toLocaleString()}
                     {execution.executedBy

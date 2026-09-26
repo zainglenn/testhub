@@ -73,6 +73,7 @@ export const executionInput = z.object({
   testCaseId: z.string().min(1),
   status: z.enum(EXECUTION_STATUSES).default("PASS"),
   comment: optionalText,
+  dataset: z.string().trim().max(120).optional(),
 });
 
 export const runInput = z.object({

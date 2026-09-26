@@ -156,6 +156,7 @@ model TestCase {
   updatedAt     DateTime        @updatedAt
   steps         TestStep[]
   jiraLinks     JiraIssueLink[]
+  parameters    TestCaseParameter[]
   executions    TestExecution[]
   tags          Tag[]
   runItems      TestRunItem[]
@@ -228,6 +229,7 @@ model TestExecution {
   run        TestRun? @relation(fields: [runId], references: [id], onDelete: Cascade)
   status     String
   comment    String?
+  dataset    String?
   executedById String?
   executedBy   User?    @relation(fields: [executedById], references: [id], onDelete: SetNull)
   executedAt DateTime @default(now())
@@ -434,8 +436,21 @@ model Parameter {
   name        String
   values      String    @default("")
   createdAt   DateTime  @default(now())
+  testCases   TestCaseParameter[]
 
   @@index([workspaceId])
+}
+
+model TestCaseParameter {
+  id          String    @id @default(cuid())
+  testCaseId  String
+  testCase    TestCase  @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  parameterId String
+  parameter   Parameter @relation(fields: [parameterId], references: [id], onDelete: Cascade)
+
+  @@unique([testCaseId, parameterId])
+  @@index([testCaseId])
+  @@index([parameterId])
 }
 
 model SharedStep {

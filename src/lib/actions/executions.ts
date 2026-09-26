@@ -22,7 +22,7 @@ export async function recordExecution(
     return { ok: false, error: firstError(parsed.error) };
   }
 
-  const { testCaseId, status, comment } = parsed.data;
+  const { testCaseId, status, comment, dataset } = parsed.data;
 
   const testCase = await prisma.testCase.findUnique({
     where: { id: testCaseId },
@@ -43,6 +43,7 @@ export async function recordExecution(
       projectId: testCase.projectId,
       status,
       comment,
+      dataset: dataset ?? null,
       executedById: session?.userId ?? null,
     },
   });

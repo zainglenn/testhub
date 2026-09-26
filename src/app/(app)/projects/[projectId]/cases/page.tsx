@@ -173,6 +173,7 @@ export default async function ProjectCasesPage(
           jiraLinks: { orderBy: { createdAt: "asc" } },
           createdBy: { select: { name: true } },
           fieldValues: true,
+          parameters: { include: { parameter: true } },
         },
       })
     : null;
@@ -191,6 +192,11 @@ export default async function ProjectCasesPage(
     where: { workspaceId: workspace.id },
     orderBy: { title: "asc" },
     select: { id: true, title: true },
+  });
+  const workspaceParameters = await prisma.parameter.findMany({
+    where: { workspaceId: workspace.id },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true, values: true },
   });
   const jiraTab = (testCase: NonNullable<typeof detailCase>) => {
     if (jiraEnabled) {
@@ -452,7 +458,7 @@ export default async function ProjectCasesPage(
               sharedSteps={sharedSteps}
             />
           }
-          properties={<CaseProperties testCase={selectedCase} />}
+          properties={<CaseProperties testCase={selectedCase} workspaceParameters={workspaceParameters} />}
           runs={<CaseRuns testCase={selectedCase} />}
           jira={jiraTab(selectedCase)}
         />
@@ -472,7 +478,7 @@ export default async function ProjectCasesPage(
               sharedSteps={sharedSteps}
             />
           }
-          properties={<CaseProperties testCase={modalCase} />}
+          properties={<CaseProperties testCase={modalCase} workspaceParameters={workspaceParameters} />}
           runs={<CaseRuns testCase={modalCase} />}
           jira={jiraTab(modalCase)}
         />
