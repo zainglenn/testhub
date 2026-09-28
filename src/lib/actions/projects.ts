@@ -8,6 +8,11 @@ import { getSession } from "@/lib/auth";
 import { requirePermission } from "@/lib/authz";
 import { PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import {
+  createGlobalIssueType,
+  findIssueTypeByName,
+  getProjectSummary,
+} from "@/lib/jira/client";
 import { firstError, formToObject, projectInput, projectJiraInput, projectUpdateInput } from "@/lib/validation";
 import { getWorkspace, projectInActiveWorkspace } from "@/lib/workspace";
 
@@ -116,6 +121,80 @@ export async function updateProjectJira(
   });
   revalidatePath(`/projects/${parsed.data.id}/settings`);
   return { ok: true };
+}
+
+/**
+ * Best-effort provisioning of a native "Test" work type for a **company-managed**
+ * Jira project: creates the issue type if missing and selects it for the project.
+ * Team-managed projects must add the work type manually (no public API).
+ */
+export async function provisionTestWorkType(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const session = await requirePermission(PERMISSIONS.PROJECT_MANAGE);
+  if (!session) {
+    return { ok: false, error: "You do not have permission to manage projects." };
+  }
+  const projectId = String(formData.get("id") ?? "");
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { id: true, workspaceId: true, jiraProjectKey: true },
+  });
+  if (!project || !(await projectInActiveWorkspace(project.id))) {
+    return { ok: false, error: "Project not found in this workspace." };
+  }
+  if (!project.jiraProjectKey) {
+    return { ok: false, error: "Set the Jira project key first." };
+  }
+  const workspaceId = project.workspaceId ?? undefined;
+  if (!workspaceId) {
+    return { ok: false, error: "Project is not in a workspace." };
+  }
+
+  const jiraProject = await getProjectSummary(project.jiraProjectKey, workspaceId);
+  if (!jiraProject) {
+    return { ok: false, error: "Jira project not found — check the project key." };
+  }
+  if (jiraProject.simplified) {
+    return {
+      ok: false,
+      error:
+        'This is a team-managed project: add a "Test" work type in Space settings → Work types, then select it above. (Auto-provisioning needs a company-managed project.)',
+    };
+  }
+
+  try {
+    const existing = await findIssueTypeByName("Test", workspaceId);
+    if (!existing) {
+      await createGlobalIssueType("Test", "TestHub test case", workspaceId);
+    }
+    await prisma.project.update({
+      where: { id: project.id },
+      data: { jiraTestIssueType: "Test" },
+    });
+    await recordAudit({
+      workspaceId,
+      actorId: session.userId,
+      action: "jira.provision",
+      entityType: "project",
+      entityId: project.id,
+      metadata: { issueType: "Test", created: !existing },
+    });
+    revalidatePath(`/projects/${project.id}/settings`);
+    return { ok: true };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Provisioning failed.";
+    if (/\(403\)/.test(message) || /scope/i.test(message)) {
+      return {
+        ok: false,
+        error:
+          "Reconnect Jira to grant the manage:jira-configuration scope, then retry.",
+      };
+    }
+    return { ok: false, error: message };
+  }
 }
 
 export async function deleteProject(formData: FormData): Promise<void> {

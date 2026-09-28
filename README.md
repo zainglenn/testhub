@@ -184,6 +184,10 @@ project uses different keys.
     the settings dropdown. It falls back to `Task` if unset.
   - **Publish unpublished tests** in project settings creates issues for every
     unpublished case in the project (up to 50 per run).
+  - **Provision Test work type** (project settings) creates the `Test` work type
+    and selects it for **company-managed** projects; team-managed projects must add
+    it manually. This feature adds the `manage:jira-configuration` scope, so
+    existing Jira connections must be **reconnected** once to grant it.
 - **Status write-back.** In a project's **Settings → Jira status write-back**,
   set target status names for pass/fail (e.g. `Done`, `Reopen`). When a result is
   recorded, linked issues are transitioned to the matching status — resolved

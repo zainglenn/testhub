@@ -2,6 +2,7 @@ export const JIRA_SCOPES = [
   "read:jira-work",
   "read:jira-user",
   "write:jira-work",
+  "manage:jira-configuration",
   "offline_access",
 ] as const;
 

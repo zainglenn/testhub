@@ -218,6 +218,63 @@ export async function getProjectIssueTypes(
   }
 }
 
+/** Returns a project's summary (id + whether it is team-managed/simplified). */
+export async function getProjectSummary(
+  projectKey: string,
+  workspaceId?: string,
+): Promise<{ id: string; key: string; name: string; simplified: boolean } | null> {
+  try {
+    const project = await jiraFetch<{
+      id: string;
+      key: string;
+      name: string;
+      simplified?: boolean;
+    }>(`/project/${encodeURIComponent(projectKey)}`, undefined, workspaceId);
+    return {
+      id: project.id,
+      key: project.key,
+      name: project.name,
+      simplified: Boolean(project.simplified),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Returns the id of a global issue (work) type by name, if any. */
+export async function findIssueTypeByName(
+  name: string,
+  workspaceId?: string,
+): Promise<string | null> {
+  try {
+    const types = await jiraFetch<
+      { id: string; name: string; subtask?: boolean }[]
+    >("/issuetype", undefined, workspaceId);
+    const match = types.find(
+      (type) => !type.subtask && type.name.toLowerCase() === name.toLowerCase(),
+    );
+    return match ? match.id : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Creates a global issue (work) type. Requires manage:jira-configuration. */
+export async function createGlobalIssueType(
+  name: string,
+  description: string,
+  workspaceId?: string,
+): Promise<{ id: string; name: string }> {
+  return jiraFetch<{ id: string; name: string }>(
+    "/issuetype",
+    {
+      method: "POST",
+      body: JSON.stringify({ name, description, type: "standard" }),
+    },
+    workspaceId,
+  );
+}
+
 export function issueLinkFields(issue: JiraIssue) {
   return {
     issueKey: issue.key,

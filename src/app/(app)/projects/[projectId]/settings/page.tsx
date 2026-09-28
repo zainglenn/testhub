@@ -23,7 +23,7 @@ import {
   removeProjectMember,
   setProjectRestricted,
 } from "@/lib/actions/project-access";
-import { deleteProject, updateProject, updateProjectJira } from "@/lib/actions/projects";
+import { deleteProject, provisionTestWorkType, updateProject, updateProjectJira } from "@/lib/actions/projects";
 import { publishAllCasesToJira } from "@/lib/actions/jira";
 import {
   getJiraConnectionForWorkspace,
@@ -310,6 +310,24 @@ export default async function ProjectSettingsPage(
               Up to 50 cases will be created in Jira and linked back to TestHub.
             </Typography>
           </FormDialog>
+
+          <Box sx={{ mt: 1.5 }}>
+            <FormDialog
+              action={provisionTestWorkType}
+              hidden={{ id: project.id }}
+              title="Provision Test work type"
+              description="Create a native 'Test' work type in Jira and select it (company-managed projects)."
+              triggerLabel="Provision Test work type"
+              triggerVariant="outlined"
+              submitLabel="Provision"
+              successMessage="Test work type provisioned"
+            >
+              <Typography variant="body2" color="text.secondary">
+                For company-managed projects. Team-managed projects must add a
+                &quot;Test&quot; work type manually in Space settings → Work types.
+              </Typography>
+            </FormDialog>
+          </Box>
         </CardContent>
       </Card>
 
