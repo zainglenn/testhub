@@ -36,6 +36,8 @@ automatically.
   matrix as CSV.
 - **Jira dashboard gadget** — a Forge dashboard gadget showing pass rate and
   coverage for a mapped TestHub project, right on a Jira dashboard.
+- **Publish tests to Jira** — create a Jira issue mirroring a test case (with its
+  steps and preconditions) and keep it in sync, so tests become JQL-searchable.
 - **Jira status write-back** — optionally transition linked issues on pass/fail
   (configured per project by target status name).
 - **Dashboard** — sidebar-driven shell, overview stat cards, a test-assets-per-project
@@ -159,6 +161,10 @@ project uses different keys.
   creates a Jira bug via `POST /rest/api/3/issue` (project key + issue type,
   prefilled summary and description from the case and its latest failed result)
   and links it to the case. Also gated on `write:jira-work`.
+- **Test mirror.** In a case's **Jira** tab, **Publish to Jira** creates a Jira
+  issue mirroring the test (steps + preconditions, using the project's
+  `jiraTestIssueType`, default `Task`), **Sync** pushes later edits, and
+  **Unpublish** detaches it. This makes tests JQL-searchable in Jira.
 - **Status write-back.** In a project's **Settings → Jira status write-back**,
   set target status names for pass/fail (e.g. `Done`, `Reopen`). When a result is
   recorded, linked issues are transitioned to the matching status — resolved
