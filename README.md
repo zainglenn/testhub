@@ -45,7 +45,9 @@ automatically.
 - **Sortable case grid** — the project case list is a MUI X DataGrid with sorting,
   pagination and status/priority chips.
 - **CSV import / export** — round-trip the repository; nested suites via `Parent / Child`.
-- **CI results ingestion** — push JUnit XML into runs via a project API token.
+- **CI results ingestion** — push JUnit XML, VSTest TRX or Gauge results into
+  runs via a project API token; Gauge `--machine-readable` records **per-step**
+  results and screenshots as evidence.
 
 ## Screenshots
 
@@ -359,8 +361,9 @@ src/app/cases/[caseId]            Case editor: details, steps, Jira links
 
 Create a token in a project's **Settings → API tokens**, then POST a test report.
 The body accepts **one** of `junit` (JUnit XML), `trx` (VSTest/Azure Pipelines
-TRX) or `gauge` (Gauge's `--machine-readable` JSON) as a string, plus optional
-`runName` and `environment`:
+TRX), `gauge` (Gauge's summarized JSON) or `gaugeMachine` (Gauge's
+`--machine-readable` NDJSON) as a string, plus optional `runName` and
+`environment`:
 
 ```bash
 curl -X POST http://localhost:3000/api/ingest \
@@ -371,7 +374,32 @@ curl -X POST http://localhost:3000/api/ingest \
 
 Test cases are matched by key (e.g. `EPP-12`) in the name/classname, falling
 back to an exact title match. A completed run is created with the matched
-results; the response is `{ runId, matched, unmatched, failed }`.
+results; the response is `{ runId, matched, unmatched, failed, steps, evidence }`.
+
+**Gauge step-level results.** Send `gaugeMachine` with the exact output of
+`gauge run --machine-readable` and TestHub records a result **per step** (mapped
+to the case's steps in order), not just per scenario:
+
+```bash
+gauge run --machine-readable specs > gauge.ndjson
+# then POST { "gaugeMachine": "<contents of gauge.ndjson>", ... }
+```
+
+**Evidence.** Optionally attach files (e.g. Gauge screenshots) alongside the
+report as base64 in `attachments`. Give a `caseKey` (or omit it when only one
+case matched) and an optional 1-based `stepIndex` to pin the file to a step:
+
+```json
+{
+  "gaugeMachine": "…",
+  "attachments": [
+    { "name": "fail.png", "dataBase64": "<base64>", "caseKey": "EPP-12", "stepIndex": 2 }
+  ]
+}
+```
+
+Files are stored in Supabase Storage and shown as evidence on the run (max
+10 MB each); they are skipped if storage isn't configured.
 
 ### Importing existing automation
 
@@ -386,7 +414,8 @@ Turn already-automated tests into a repository without re-authoring:
   suites and the TCM steps become steps.
 
 Their **execution** results are ingested through `POST /api/ingest` with the
-`gauge` (machine-readable JSON) or `trx` (VSTest/Azure Pipelines) body key.
+`gaugeMachine` (Gauge `--machine-readable`, step-level) or `trx` (VSTest/Azure
+Pipelines) body key.
 
 ### Single sign-on (OIDC)
 
