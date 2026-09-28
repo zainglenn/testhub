@@ -40,19 +40,23 @@ export async function GET(request: Request) {
 
   const projectKey = (url.searchParams.get("projectKey") ?? "").trim();
   const projectId = (url.searchParams.get("projectId") ?? "").trim();
-  if (!projectKey && !projectId) {
-    return json({ error: "Provide ?projectKey=SCRUM or ?projects=1." }, 400);
-  }
 
-  const project = await prisma.project.findFirst({
-    where: projectId
-      ? { id: projectId }
-      : { jiraProjectKey: projectKey.toUpperCase() },
-    select: { id: true, key: true, name: true, jiraProjectKey: true },
-  });
+  const select = { id: true, key: true, name: true, jiraProjectKey: true } as const;
+  const project = projectId
+    ? await prisma.project.findFirst({ where: { id: projectId }, select })
+    : projectKey
+      ? await prisma.project.findFirst({
+          where: { jiraProjectKey: projectKey.toUpperCase() },
+          select,
+        })
+      : await prisma.project.findFirst({
+          where: { jiraProjectKey: { not: null } },
+          orderBy: { name: "asc" },
+          select,
+        });
   if (!project) {
     return json(
-      { error: `No TestHub project is mapped to ${projectKey || projectId}.` },
+      { error: "No TestHub project is mapped to a Jira project yet." },
       404,
     );
   }

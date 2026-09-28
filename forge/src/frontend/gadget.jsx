@@ -27,19 +27,11 @@ const App = () => {
   const [error, setError] = useState(undefined);
 
   useEffect(() => {
-    if (!projectKey) return;
-    invoke("getMetrics", { projectKey })
+    invoke("getMetrics", projectKey ? { projectKey } : {})
       .then(setData)
       .catch((e) => setError(e && e.message ? e.message : String(e)));
   }, [projectKey]);
 
-  if (!projectKey) {
-    return (
-      <SectionMessage appearance="information">
-        <Text>Configure this gadget and choose a TestHub project.</Text>
-      </SectionMessage>
-    );
-  }
   if (error) {
     return (
       <SectionMessage appearance="error">
@@ -87,6 +79,13 @@ const App = () => {
             Open reports in TestHub
           </Link>
         </Inline>
+      ) : null}
+
+      {!projectKey ? (
+        <Text>
+          Showing the default mapped project — configure the gadget to pick
+          another.
+        </Text>
       ) : null}
     </Stack>
   );
