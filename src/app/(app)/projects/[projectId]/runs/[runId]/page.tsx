@@ -31,6 +31,7 @@ export default async function RunPage(
     where: { id: runId },
     include: {
       project: true,
+      configurationRef: { select: { name: true } },
       executions: { include: { stepResults: true, evidence: true } },
       createdBy: { select: { name: true } },
       items: {
@@ -117,6 +118,9 @@ export default async function RunPage(
             />
             {run.environment ? (
               <Chip size="small" variant="outlined" label={run.environment} />
+            ) : null}
+            {run.configurationRef ? (
+              <Chip size="small" variant="outlined" label={run.configurationRef.name} />
             ) : null}
           </Stack>
           <Typography variant="caption" color="text.secondary">

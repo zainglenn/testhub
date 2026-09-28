@@ -4,6 +4,7 @@ import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
 import LinearProgress from "@mui/material/LinearProgress";
+import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
@@ -39,6 +40,8 @@ export default async function ProjectRunsPage(
           _count: { select: { executions: true, items: true } },
           plan: { select: { id: true, name: true } },
           assignee: { select: { id: true, name: true } },
+          environmentRef: { select: { name: true } },
+          configurationRef: { select: { name: true } },
         },
       },
     },
@@ -48,7 +51,7 @@ export default async function ProjectRunsPage(
     notFound();
   }
 
-  const [suiteOptions, members, plans] = await Promise.all([
+  const [suiteOptions, members, plans, environments, configurations] = await Promise.all([
     Promise.resolve(flattenSuites(buildSuiteTree(project.suites))),
     prisma.workspaceMember.findMany({
       where: { workspaceId: workspace.id },
@@ -57,6 +60,16 @@ export default async function ProjectRunsPage(
     prisma.testPlan.findMany({
       where: { projectId },
       orderBy: { createdAt: "desc" },
+      select: { id: true, name: true },
+    }),
+    prisma.environment.findMany({
+      where: { workspaceId: workspace.id },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+    prisma.configuration.findMany({
+      where: { workspaceId: workspace.id },
+      orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
   ]);
@@ -97,6 +110,36 @@ export default async function ProjectRunsPage(
             required
           />
           <RunScopeFields suiteOptions={suiteOptions} tags={project.tags} />
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+            <TextField
+              select
+              name="environmentId"
+              label="Environment"
+              defaultValue=""
+              fullWidth
+            >
+              <MenuItem value="">None</MenuItem>
+              {environments.map((environment) => (
+                <MenuItem key={environment.id} value={environment.id}>
+                  {environment.name}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              name="configurationId"
+              label="Configuration"
+              defaultValue=""
+              fullWidth
+            >
+              <MenuItem value="">None</MenuItem>
+              {configurations.map((configuration) => (
+                <MenuItem key={configuration.id} value={configuration.id}>
+                  {configuration.name}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Stack>
           <TextField
             name="description"
             label="Description"
@@ -181,6 +224,13 @@ export default async function ProjectRunsPage(
                         size="small"
                         variant="outlined"
                         label={run.environment}
+                      />
+                    ) : null}
+                    {run.configurationRef ? (
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        label={run.configurationRef.name}
                       />
                     ) : null}
                     {run.plan ? (

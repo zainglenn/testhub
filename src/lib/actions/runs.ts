@@ -10,7 +10,7 @@ import { commentCaseResult, commentRunSummary } from "@/lib/jira/sync";
 import { PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { firstError, formToObject, runInput } from "@/lib/validation";
-import { projectInActiveWorkspace, runInActiveWorkspace } from "@/lib/workspace";
+import { getWorkspace, projectInActiveWorkspace, runInActiveWorkspace } from "@/lib/workspace";
 
 function normalizeOptionalId(value: unknown): unknown {
   return value === "" || value === "none" ? null : value;
@@ -48,17 +48,46 @@ export async function createTestRun(
   const raw = formToObject(formData);
   raw.suiteId = normalizeOptionalId(raw.suiteId);
   raw.tagId = normalizeOptionalId(raw.tagId);
+  raw.environmentId = normalizeOptionalId(raw.environmentId);
+  raw.configurationId = normalizeOptionalId(raw.configurationId);
 
   const parsed = runInput.safeParse(raw);
   if (!parsed.success) {
     return { ok: false, error: firstError(parsed.error) };
   }
 
-  const { projectId, name, description, environment, scope, suiteId, tagId } =
-    parsed.data;
+  const {
+    projectId,
+    name,
+    description,
+    environment,
+    environmentId,
+    configurationId,
+    scope,
+    suiteId,
+    tagId,
+  } = parsed.data;
 
   if (!(await projectInActiveWorkspace(projectId))) {
     return { ok: false, error: "Project not found in this workspace." };
+  }
+
+  const workspace = await getWorkspace();
+  let environmentName = environment ?? null;
+  if (environmentId) {
+    const found = await prisma.environment.findFirst({
+      where: { id: environmentId, workspaceId: workspace.id },
+      select: { name: true },
+    });
+    if (!found) return { ok: false, error: "Environment not found." };
+    environmentName = found.name;
+  }
+  if (configurationId) {
+    const found = await prisma.configuration.findFirst({
+      where: { id: configurationId, workspaceId: workspace.id },
+      select: { id: true },
+    });
+    if (!found) return { ok: false, error: "Configuration not found." };
   }
 
   let caseIds: string[] = [];
@@ -103,7 +132,9 @@ export async function createTestRun(
         projectId,
         name,
         description,
-        environment,
+        environment: environmentName,
+        environmentId,
+        configurationId,
         createdById: session?.userId ?? null,
       },
     });

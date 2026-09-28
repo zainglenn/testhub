@@ -1,6 +1,7 @@
 "use client";
 
 import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
+import ChecklistOutlinedIcon from "@mui/icons-material/ChecklistOutlined";
 import AddIcon from "@mui/icons-material/Add";
 import AdminPanelSettingsOutlinedIcon from "@mui/icons-material/AdminPanelSettingsOutlined";
 import AppsOutlinedIcon from "@mui/icons-material/AppsOutlined";
@@ -17,6 +18,8 @@ import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
 import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import InsightsOutlinedIcon from "@mui/icons-material/InsightsOutlined";
 import LabelOutlinedIcon from "@mui/icons-material/LabelOutlined";
+import PublicOutlinedIcon from "@mui/icons-material/PublicOutlined";
+import SettingsSuggestOutlinedIcon from "@mui/icons-material/SettingsSuggestOutlined";
 import ListAltOutlinedIcon from "@mui/icons-material/ListAltOutlined";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import LogoutIcon from "@mui/icons-material/Logout";
@@ -104,7 +107,10 @@ const workspaceNav: NavItem[] = [
   { href: "/workspace/groups", label: "Groups", icon: GroupsOutlinedIcon },
   { href: "/workspace/roles", label: "Roles", icon: AdminPanelSettingsOutlinedIcon },
   { href: "/workspace/fields", label: "Fields", icon: TuneOutlinedIcon },
+  { href: "/workspace/environments", label: "Environments", icon: PublicOutlinedIcon },
+  { href: "/workspace/configurations", label: "Configurations", icon: SettingsSuggestOutlinedIcon },
   { href: "/workspace/parameters", label: "Parameters", icon: FunctionsOutlinedIcon },
+  { href: "/workspace/preconditions", label: "Preconditions", icon: ChecklistOutlinedIcon },
   { href: "/workspace/shared-steps", label: "Shared steps", icon: AccountTreeOutlinedIcon },
   { href: "/workspace/tags", label: "Tags", icon: LabelOutlinedIcon },
   { href: "/workspace/attachments", label: "Attachments", icon: AttachmentOutlinedIcon },

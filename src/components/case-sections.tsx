@@ -47,6 +47,10 @@ import {
 import { addTagToCase, removeTagFromCase } from "@/lib/actions/tags";
 import { setCaseParameters } from "@/lib/actions/case-parameters";
 import {
+  attachPrecondition,
+  detachPrecondition,
+} from "@/lib/actions/preconditions";
+import {
   CASE_STATUSES,
   EXECUTION_COLORS,
   EXECUTION_STATUSES,
@@ -57,10 +61,13 @@ import type {
   Field,
   FieldValue,
   JiraIssueLink,
+  Precondition,
+  PreconditionStep,
   Project,
   Tag,
   TestCase,
   TestCaseParameter,
+  TestCasePrecondition,
   TestExecution,
   TestExecutionStep,
   TestStep,
@@ -84,6 +91,10 @@ export type CaseWithRelations = TestCase & {
   fieldValues: FieldValue[];
   jiraLinks: JiraIssueLink[];
   parameters: (TestCaseParameter & { parameter: Parameter })[];
+  preconditions: string | null;
+  preconditionLinks: (TestCasePrecondition & {
+    precondition: Precondition & { steps: PreconditionStep[] };
+  })[];
 };
 
 export function CasePanelHeader({
@@ -170,9 +181,11 @@ function Section({
 export function CaseGeneralView({
   testCase,
   fields,
+  preconditionOptions = [],
 }: {
   testCase: CaseWithRelations;
   fields: Field[];
+  preconditionOptions?: { id: string; name: string }[];
 }) {
   return (
     <Box>
@@ -200,6 +213,99 @@ export function CaseGeneralView({
           </Stack>
         </Box>
       ) : null}
+      <Box sx={{ mb: 2 }}>
+        <Stack
+          direction="row"
+          sx={{
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 0.5,
+          }}
+        >
+          <Typography variant="subtitle2" color="text.secondary">
+            Linked preconditions
+          </Typography>
+          {preconditionOptions.length > 0 ? (
+            <FormDialog
+              action={attachPrecondition}
+              hidden={{ testCaseId: testCase.id }}
+              title="Attach precondition"
+              triggerLabel="Attach"
+              triggerVariant="outlined"
+              submitLabel="Attach precondition"
+              successMessage="Precondition attached"
+            >
+              <TextField
+                select
+                name="preconditionId"
+                label="Precondition"
+                defaultValue=""
+                required
+                fullWidth
+              >
+                {preconditionOptions.map((option) => (
+                  <MenuItem key={option.id} value={option.id}>
+                    {option.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </FormDialog>
+          ) : null}
+        </Stack>
+        {testCase.preconditionLinks.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            None attached.
+          </Typography>
+        ) : (
+          <Stack spacing={0.75}>
+            {testCase.preconditionLinks.map((link) => (
+              <Box
+                key={link.id}
+                sx={{ border: 1, borderColor: "divider", borderRadius: 1, p: 1 }}
+              >
+                <Stack
+                  direction="row"
+                  sx={{ justifyContent: "space-between", alignItems: "center" }}
+                >
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {link.precondition.name}
+                  </Typography>
+                  <ConfirmButton
+                    action={detachPrecondition}
+                    hidden={{ linkId: link.id }}
+                    title="Detach precondition?"
+                    description={`Detach "${link.precondition.name}" from this case?`}
+                    confirmLabel="Detach"
+                    color="inherit"
+                    iconOnly
+                    ariaLabel="Detach precondition"
+                    icon={<DeleteOutlinedIcon sx={{ fontSize: 16 }} />}
+                  />
+                </Stack>
+                {link.precondition.description ? (
+                  <Typography variant="caption" color="text.secondary">
+                    {link.precondition.description}
+                  </Typography>
+                ) : null}
+                {link.precondition.steps.length > 0 ? (
+                  <Stack spacing={0.25} sx={{ mt: 0.5 }}>
+                    {link.precondition.steps.map((step, index) => (
+                      <Typography
+                        key={step.id}
+                        variant="caption"
+                        color="text.secondary"
+                      >
+                        {index + 1}. {step.action}
+                        {step.expectedResult ? ` → ${step.expectedResult}` : ""}
+                      </Typography>
+                    ))}
+                  </Stack>
+                ) : null}
+              </Box>
+            ))}
+          </Stack>
+        )}
+      </Box>
       <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
         Steps
       </Typography>

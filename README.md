@@ -29,6 +29,9 @@ automatically.
 - **Step-level results & evidence** — record a pass/fail/blocked/skipped result per
   test step with an optional comment and attached evidence; the case result is
   derived from its steps.
+- **Environments, configurations & preconditions** — workspace-level named
+  environments and configuration sets (picked when starting a run) plus reusable
+  preconditions, with steps, that attach to test cases.
 - **Jira status write-back** — optionally transition linked issues on pass/fail
   (configured per project by target status name).
 - **Dashboard** — sidebar-driven shell, overview stat cards, a test-assets-per-project

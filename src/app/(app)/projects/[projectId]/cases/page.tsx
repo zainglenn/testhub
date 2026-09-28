@@ -178,6 +178,13 @@ export default async function ProjectCasesPage(
           createdBy: { select: { name: true } },
           fieldValues: true,
           parameters: { include: { parameter: true } },
+          preconditionLinks: {
+            include: {
+              precondition: {
+                include: { steps: { orderBy: { order: "asc" } } },
+              },
+            },
+          },
         },
       })
     : null;
@@ -201,6 +208,11 @@ export default async function ProjectCasesPage(
     where: { workspaceId: workspace.id },
     orderBy: { name: "asc" },
     select: { id: true, name: true, values: true },
+  });
+  const preconditionOptions = await prisma.precondition.findMany({
+    where: { workspaceId: workspace.id },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
   });
   const jiraTab = (testCase: NonNullable<typeof detailCase>) => {
     if (jiraEnabled) {
@@ -453,7 +465,7 @@ export default async function ProjectCasesPage(
           header={
             <CasePanelHeader testCase={selectedCase} closeHref={panelBase} />
           }
-          generalView={<CaseGeneralView testCase={selectedCase} fields={fields} />}
+          generalView={<CaseGeneralView testCase={selectedCase} fields={fields} preconditionOptions={preconditionOptions} />}
           generalEdit={
             <CaseGeneralEdit
               testCase={selectedCase}
@@ -473,7 +485,7 @@ export default async function ProjectCasesPage(
           open
           closeHref={panelBase}
           header={<CasePanelHeader testCase={modalCase} closeHref={panelBase} />}
-          generalView={<CaseGeneralView testCase={modalCase} fields={fields} />}
+          generalView={<CaseGeneralView testCase={modalCase} fields={fields} preconditionOptions={preconditionOptions} />}
           generalEdit={
             <CaseGeneralEdit
               testCase={modalCase}

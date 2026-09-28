@@ -107,6 +107,8 @@ export const runInput = z.object({
   name: z.string().trim().min(1, "Name is required").max(160),
   description: optionalText,
   environment: optionalText,
+  environmentId: z.string().min(1).optional().nullable(),
+  configurationId: z.string().min(1).optional().nullable(),
   scope: z.enum(["ALL", "SUITE", "TAG"]).default("ALL"),
   suiteId: z.string().min(1).optional().nullable(),
   tagId: z.string().min(1).optional().nullable(),
@@ -178,8 +180,34 @@ export const parameterInput = z.object({
   values: z.string().trim().max(500).optional(),
 });
 
+export const environmentInput = z.object({
+  name: z.string().trim().min(1, "Name is required").max(80),
+  description: optionalText,
+});
+
+export const configurationInput = z.object({
+  name: z.string().trim().min(1, "Name is required").max(80),
+  values: z.string().trim().max(500).optional(),
+});
+
 export const sharedStepInput = z.object({
   title: z.string().trim().min(1, "Title is required").max(200),
+});
+
+export const preconditionInput = z.object({
+  name: z.string().trim().min(1, "Name is required").max(200),
+  description: optionalText,
+});
+
+export const preconditionStepInput = z.object({
+  preconditionId: z.string().min(1),
+  action: z.string().trim().min(1, "Action is required").max(2000),
+  expectedResult: optionalText,
+});
+
+export const testCasePreconditionInput = z.object({
+  testCaseId: z.string().min(1),
+  preconditionId: z.string().min(1),
 });
 
 export const sharedStepItemInput = z.object({

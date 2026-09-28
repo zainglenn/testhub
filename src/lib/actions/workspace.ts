@@ -11,11 +11,15 @@ import { ALL_PERMISSIONS, PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { encryptSecret } from "@/lib/secret-box";
 import {
+  configurationInput,
+  environmentInput,
   fieldInput,
   firstError,
   formToObject,
   groupInput,
   parameterInput,
+  preconditionInput,
+  preconditionStepInput,
   roleInput,
   sharedStepInput,
   sharedStepItemInput,
@@ -282,6 +286,240 @@ export async function deleteParameter(formData: FormData): Promise<void> {
   await prisma.parameter.deleteMany({ where: { id, workspaceId: ctx.workspace.id } });
   await audit(ctx.workspace.id, ctx.session.userId, "parameter.delete", id);
   revalidatePath("/workspace/parameters");
+}
+
+/* --------------------------- Environments -------------------------------- */
+
+export async function createEnvironment(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const ctx = await context();
+  if (!ctx) return { ok: false, error: "Not authorised." };
+  const parsed = environmentInput.safeParse(formToObject(formData));
+  if (!parsed.success) return { ok: false, error: firstError(parsed.error) };
+
+  try {
+    const environment = await prisma.environment.create({
+      data: { workspaceId: ctx.workspace.id, ...parsed.data },
+    });
+    await audit(
+      ctx.workspace.id,
+      ctx.session.userId,
+      "environment.create",
+      environment.id,
+    );
+  } catch {
+    return { ok: false, error: "An environment with that name already exists." };
+  }
+  revalidatePath("/workspace/environments");
+  return { ok: true };
+}
+
+export async function updateEnvironment(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const ctx = await context();
+  if (!ctx) return { ok: false, error: "Not authorised." };
+  const id = String(formData.get("id") ?? "");
+  const parsed = environmentInput.safeParse(formToObject(formData));
+  if (!id || !parsed.success) {
+    return { ok: false, error: parsed.success ? "Missing id." : firstError(parsed.error) };
+  }
+  const clash = await prisma.environment.findFirst({
+    where: { workspaceId: ctx.workspace.id, name: parsed.data.name, NOT: { id } },
+    select: { id: true },
+  });
+  if (clash) return { ok: false, error: "An environment with that name already exists." };
+
+  await prisma.environment.updateMany({
+    where: { id, workspaceId: ctx.workspace.id },
+    data: parsed.data,
+  });
+  await audit(ctx.workspace.id, ctx.session.userId, "environment.update", id);
+  revalidatePath("/workspace/environments");
+  return { ok: true };
+}
+
+export async function deleteEnvironment(formData: FormData): Promise<void> {
+  const ctx = await context();
+  if (!ctx) return;
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  await prisma.environment.deleteMany({
+    where: { id, workspaceId: ctx.workspace.id },
+  });
+  await audit(ctx.workspace.id, ctx.session.userId, "environment.delete", id);
+  revalidatePath("/workspace/environments");
+}
+
+/* --------------------------- Configurations ------------------------------ */
+
+export async function createConfiguration(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const ctx = await context();
+  if (!ctx) return { ok: false, error: "Not authorised." };
+  const parsed = configurationInput.safeParse(formToObject(formData));
+  if (!parsed.success) return { ok: false, error: firstError(parsed.error) };
+
+  try {
+    const configuration = await prisma.configuration.create({
+      data: {
+        workspaceId: ctx.workspace.id,
+        name: parsed.data.name,
+        values: parsed.data.values ?? "",
+      },
+    });
+    await audit(
+      ctx.workspace.id,
+      ctx.session.userId,
+      "configuration.create",
+      configuration.id,
+    );
+  } catch {
+    return { ok: false, error: "A configuration with that name already exists." };
+  }
+  revalidatePath("/workspace/configurations");
+  return { ok: true };
+}
+
+export async function updateConfiguration(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const ctx = await context();
+  if (!ctx) return { ok: false, error: "Not authorised." };
+  const id = String(formData.get("id") ?? "");
+  const parsed = configurationInput.safeParse(formToObject(formData));
+  if (!id || !parsed.success) {
+    return { ok: false, error: parsed.success ? "Missing id." : firstError(parsed.error) };
+  }
+  const clash = await prisma.configuration.findFirst({
+    where: { workspaceId: ctx.workspace.id, name: parsed.data.name, NOT: { id } },
+    select: { id: true },
+  });
+  if (clash) return { ok: false, error: "A configuration with that name already exists." };
+
+  await prisma.configuration.updateMany({
+    where: { id, workspaceId: ctx.workspace.id },
+    data: { name: parsed.data.name, values: parsed.data.values ?? "" },
+  });
+  await audit(ctx.workspace.id, ctx.session.userId, "configuration.update", id);
+  revalidatePath("/workspace/configurations");
+  return { ok: true };
+}
+
+export async function deleteConfiguration(formData: FormData): Promise<void> {
+  const ctx = await context();
+  if (!ctx) return;
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  await prisma.configuration.deleteMany({
+    where: { id, workspaceId: ctx.workspace.id },
+  });
+  await audit(ctx.workspace.id, ctx.session.userId, "configuration.delete", id);
+  revalidatePath("/workspace/configurations");
+}
+
+/* --------------------------- Preconditions ------------------------------- */
+
+export async function createPrecondition(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const ctx = await context();
+  if (!ctx) return { ok: false, error: "Not authorised." };
+  const parsed = preconditionInput.safeParse(formToObject(formData));
+  if (!parsed.success) return { ok: false, error: firstError(parsed.error) };
+
+  const precondition = await prisma.precondition.create({
+    data: { workspaceId: ctx.workspace.id, ...parsed.data },
+  });
+  await audit(
+    ctx.workspace.id,
+    ctx.session.userId,
+    "precondition.create",
+    precondition.id,
+  );
+  revalidatePath("/workspace/preconditions");
+  return { ok: true };
+}
+
+export async function updatePrecondition(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const ctx = await context();
+  if (!ctx) return { ok: false, error: "Not authorised." };
+  const id = String(formData.get("id") ?? "");
+  const parsed = preconditionInput.safeParse(formToObject(formData));
+  if (!id || !parsed.success) {
+    return { ok: false, error: parsed.success ? "Missing id." : firstError(parsed.error) };
+  }
+  await prisma.precondition.updateMany({
+    where: { id, workspaceId: ctx.workspace.id },
+    data: parsed.data,
+  });
+  await audit(ctx.workspace.id, ctx.session.userId, "precondition.update", id);
+  revalidatePath("/workspace/preconditions");
+  return { ok: true };
+}
+
+export async function deletePrecondition(formData: FormData): Promise<void> {
+  const ctx = await context();
+  if (!ctx) return;
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  await prisma.precondition.deleteMany({
+    where: { id, workspaceId: ctx.workspace.id },
+  });
+  await audit(ctx.workspace.id, ctx.session.userId, "precondition.delete", id);
+  revalidatePath("/workspace/preconditions");
+}
+
+export async function addPreconditionStep(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const ctx = await context();
+  if (!ctx) return { ok: false, error: "Not authorised." };
+  const parsed = preconditionStepInput.safeParse(formToObject(formData));
+  if (!parsed.success) return { ok: false, error: firstError(parsed.error) };
+
+  const precondition = await prisma.precondition.findFirst({
+    where: { id: parsed.data.preconditionId, workspaceId: ctx.workspace.id },
+    select: { id: true },
+  });
+  if (!precondition) return { ok: false, error: "Precondition not found." };
+
+  const last = await prisma.preconditionStep.aggregate({
+    where: { preconditionId: parsed.data.preconditionId },
+    _max: { order: true },
+  });
+  await prisma.preconditionStep.create({
+    data: {
+      preconditionId: parsed.data.preconditionId,
+      action: parsed.data.action,
+      expectedResult: parsed.data.expectedResult,
+      order: (last._max.order ?? -1) + 1,
+    },
+  });
+  revalidatePath("/workspace/preconditions");
+  return { ok: true };
+}
+
+export async function deletePreconditionStep(formData: FormData): Promise<void> {
+  const ctx = await context();
+  if (!ctx) return;
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  await prisma.preconditionStep.deleteMany({
+    where: { id, precondition: { workspaceId: ctx.workspace.id } },
+  });
+  revalidatePath("/workspace/preconditions");
 }
 
 /* --------------------------- Shared steps -------------------------------- */
