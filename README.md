@@ -160,6 +160,11 @@ project uses different keys.
   create a webhook for the issue *created*/*updated* events pointing at
   `${APP_BASE_URL}/api/jira/webhook?secret=<secret>` (the `x-jira-webhook-secret`
   header is also accepted). Without the secret the endpoint returns 503.
+- **Scheduled sync.** A daily Vercel Cron (`vercel.json` →
+  `GET /api/cron/jira-sync`) refreshes linked-issue metadata and re-syncs every
+  project's stored requirements, so links stay current without manual refreshes.
+  It is authorised with `CRON_SECRET` (Vercel sends it as a bearer token); you can
+  also trigger it by hand with `?secret=<CRON_SECRET>`.
 
 ### Coverage API (embedded Jira panel)
 
@@ -397,6 +402,7 @@ Health check: `GET /api/health`.
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only storage key. |
 | `SUPABASE_STORAGE_BUCKET` | Defaults to `attachments`. |
 | `JIRA_*` | Optional Jira integration (see above). |
+| `CRON_SECRET` | Authorises the scheduled Jira sync; Vercel Cron sends it automatically. |
 
 ### Docker (alternative)
 
