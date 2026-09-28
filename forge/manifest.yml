@@ -19,9 +19,43 @@ modules:
       edit:
         resource: gadget-edit
         render: native
+  jira:jqlFunction:
+    - key: testhub-failing
+      name: testHubFailing
+      arguments: []
+      types:
+        - issue
+      operators:
+        - in
+        - not in
+      function: jqlFailing
+    - key: testhub-has-tests
+      name: testHubHasTests
+      arguments: []
+      types:
+        - issue
+      operators:
+        - in
+        - not in
+      function: jqlHasTests
+    - key: testhub-untested
+      name: testHubUntested
+      arguments: []
+      types:
+        - issue
+      operators:
+        - in
+        - not in
+      function: jqlUntested
   function:
     - key: resolver
       handler: index.handler
+    - key: jqlFailing
+      handler: jql.failing
+    - key: jqlHasTests
+      handler: jql.hasTests
+    - key: jqlUntested
+      handler: jql.untested
 
 resources:
   - key: main
