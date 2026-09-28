@@ -97,6 +97,11 @@ export const testSetItemInput = z.object({
   testCaseId: z.string().min(1),
 });
 
+export const planItemInput = z.object({
+  planId: z.string().min(1),
+  testCaseId: z.string().min(1),
+});
+
 export const executionInput = z.object({
   testCaseId: z.string().min(1),
   status: z.enum(EXECUTION_STATUSES).default("PASS"),

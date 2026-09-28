@@ -9,13 +9,16 @@ import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import DeleteOutlinedIcon from "@mui/icons-material/DeleteOutlined";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ConfirmButton } from "@/components/confirm-button";
 import { FormDialog } from "@/components/form-dialog";
 import {
+  addCaseToPlan,
   addRunToPlan,
   deleteTestPlan,
+  removeCaseFromPlan,
   setRunPlan,
   startRunForPlan,
   updateTestPlan,
@@ -39,6 +42,10 @@ export default async function TestPlanPage(
     include: {
       project: { select: { id: true, key: true, name: true, workspaceId: true, restricted: true } },
       testSet: { select: { id: true, name: true } },
+      items: {
+        orderBy: { order: "asc" },
+        include: { testCase: { select: { id: true, number: true, title: true } } },
+      },
       runs: {
         orderBy: { createdAt: "desc" },
         include: {
@@ -72,6 +79,14 @@ export default async function TestPlanPage(
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   });
+
+  const projectCases = await prisma.testCase.findMany({
+    where: { projectId: plan.projectId },
+    orderBy: { number: "asc" },
+    select: { id: true, number: true, title: true },
+  });
+  const planMemberIds = new Set(plan.items.map((item) => item.testCaseId));
+  const caseCandidates = projectCases.filter((c) => !planMemberIds.has(c.id));
 
   const rollupExecuted = plan.runs.reduce(
     (sum, run) => sum + run.executions.length,
@@ -194,6 +209,92 @@ export default async function TestPlanPage(
         <StatCard label="Failed" value={rollupFailed} />
         <StatCard label="Executed" value={rollupExecuted} />
       </Box>
+
+      <Card>
+        <CardContent>
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{ justifyContent: "space-between", alignItems: "center", mb: 1 }}
+          >
+            <Typography variant="h6">
+              Tests in this plan ({plan.items.length})
+            </Typography>
+            {caseCandidates.length > 0 ? (
+              <FormDialog
+                action={addCaseToPlan}
+                hidden={{ planId: plan.id }}
+                title="Add a test to this plan"
+                triggerLabel="Add test"
+                triggerVariant="outlined"
+                submitLabel="Add test"
+                successMessage="Test added"
+              >
+                <TextField
+                  select
+                  name="testCaseId"
+                  label="Test case"
+                  defaultValue={caseCandidates[0]?.id ?? ""}
+                >
+                  {caseCandidates.map((testCase) => (
+                    <MenuItem key={testCase.id} value={testCase.id}>
+                      {`${plan.project.key}-${testCase.number} ${testCase.title}`}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </FormDialog>
+            ) : null}
+          </Stack>
+
+          {plan.items.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              No tests yet — Start a run uses the test scope (test set), or all
+              project cases.
+            </Typography>
+          ) : (
+            <Stack spacing={0.5}>
+              {plan.items.map((item) => (
+                <Stack
+                  key={item.id}
+                  direction="row"
+                  spacing={1}
+                  sx={{ alignItems: "center", justifyContent: "space-between" }}
+                >
+                  <Typography variant="body2">
+                    <Box
+                      component="span"
+                      sx={{
+                        fontFamily: "var(--font-geist-mono), monospace",
+                        color: "text.secondary",
+                        mr: 1,
+                      }}
+                    >
+                      {plan.project.key}-{item.testCase.number}
+                    </Box>
+                    <Link
+                      href={`/projects/${plan.project.id}/cases?modal=${item.testCase.id}`}
+                      style={{ color: "inherit" }}
+                    >
+                      {item.testCase.title}
+                    </Link>
+                  </Typography>
+                  <ConfirmButton
+                    action={removeCaseFromPlan}
+                    hidden={{ id: item.id }}
+                    title="Remove test?"
+                    description="Remove this test from the plan?"
+                    confirmLabel="Remove"
+                    color="inherit"
+                    iconOnly
+                    ariaLabel="Remove test"
+                    icon={<DeleteOutlinedIcon sx={{ fontSize: 16 }} />}
+                  />
+                </Stack>
+              ))}
+            </Stack>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent>

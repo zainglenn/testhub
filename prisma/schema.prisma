@@ -170,6 +170,7 @@ model TestCase {
   runItems      TestRunItem[]
   fieldValues   FieldValue[]
   testSets      TestSetItem[]
+  planItems     TestPlanItem[]
   calledBySteps TestStep[] @relation("StepCallsCase")
 
   @@unique([projectId, number])
@@ -367,9 +368,23 @@ model TestPlan {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   runs        TestRun[]
+  items       TestPlanItem[]
 
   @@index([projectId])
   @@index([testSetId])
+}
+
+model TestPlanItem {
+  id         String   @id @default(cuid())
+  planId     String
+  plan       TestPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  testCaseId String
+  testCase   TestCase @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  order      Int      @default(0)
+
+  @@unique([planId, testCaseId])
+  @@index([planId])
+  @@index([testCaseId])
 }
 
 model TestRunItem {

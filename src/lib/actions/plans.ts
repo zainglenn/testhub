@@ -11,6 +11,7 @@ import {
   firstError,
   formToObject,
   planInput,
+  planItemInput,
   planUpdateInput,
 } from "@/lib/validation";
 import { projectInActiveWorkspace } from "@/lib/workspace";
@@ -101,7 +102,14 @@ export async function startRunForPlan(formData: FormData): Promise<void> {
   if (!plan || !(await projectInActiveWorkspace(plan.projectId))) return;
 
   let caseIds: string[] = [];
-  if (plan.testSetId) {
+  const planItems = await prisma.testPlanItem.findMany({
+    where: { planId: plan.id },
+    orderBy: { order: "asc" },
+    select: { testCaseId: true },
+  });
+  if (planItems.length > 0) {
+    caseIds = planItems.map((item) => item.testCaseId);
+  } else if (plan.testSetId) {
     const items = await prisma.testSetItem.findMany({
       where: { testSetId: plan.testSetId },
       orderBy: { order: "asc" },
@@ -141,6 +149,57 @@ export async function startRunForPlan(formData: FormData): Promise<void> {
 
   revalidatePath(`/projects/${plan.projectId}/plans/${plan.id}`);
   redirect(`/projects/${plan.projectId}/runs/${run.id}`);
+}
+
+export async function addCaseToPlan(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  if (!(await requirePermission(PERMISSIONS.RUN_MANAGE))) {
+    return { ok: false, error: "You do not have permission to manage test plans." };
+  }
+  const parsed = planItemInput.safeParse(formToObject(formData));
+  if (!parsed.success) return { ok: false, error: firstError(parsed.error) };
+
+  const { planId, testCaseId } = parsed.data;
+  const plan = await planInActiveWorkspace(planId);
+  if (!plan) return { ok: false, error: "Test plan not found in this workspace." };
+
+  const testCase = await prisma.testCase.findUnique({
+    where: { id: testCaseId },
+    select: { projectId: true },
+  });
+  if (!testCase || testCase.projectId !== plan.projectId) {
+    return { ok: false, error: "Test case not found in this project." };
+  }
+
+  const last = await prisma.testPlanItem.aggregate({
+    where: { planId },
+    _max: { order: true },
+  });
+  await prisma.testPlanItem.upsert({
+    where: { planId_testCaseId: { planId, testCaseId } },
+    create: { planId, testCaseId, order: (last._max.order ?? -1) + 1 },
+    update: {},
+  });
+
+  revalidatePath(`/projects/${plan.projectId}/plans/${planId}`);
+  return { ok: true };
+}
+
+export async function removeCaseFromPlan(formData: FormData): Promise<void> {
+  if (!(await requirePermission(PERMISSIONS.RUN_MANAGE))) return;
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  const item = await prisma.testPlanItem.findUnique({
+    where: { id },
+    select: { planId: true, plan: { select: { projectId: true } } },
+  });
+  if (!item || !(await projectInActiveWorkspace(item.plan.projectId))) return;
+
+  await prisma.testPlanItem.delete({ where: { id } });
+  revalidatePath(`/projects/${item.plan.projectId}/plans/${item.planId}`);
 }
 
 export async function deleteTestPlan(formData: FormData): Promise<void> {
