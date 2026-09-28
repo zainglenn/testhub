@@ -299,6 +299,7 @@ explicit `projectKey`.
 | `npm run lint` | Run ESLint |
 | `npm run typecheck` | Generate route types and run `tsc --noEmit` |
 | `npm test` | Run the Vitest unit test suite |
+| `npm run ci:gauge` | Send a Gauge/JUnit report to `/api/ingest` (see `docs/ci`) |
 | `npm run db:migrate` | Create/apply Prisma migrations |
 | `npm run db:push` | Push the schema without a migration (prototyping) |
 | `npm run db:seed` | Create the default admin user and workspace |
@@ -439,6 +440,10 @@ case matched) and an optional 1-based `stepIndex` to pin the file to a step:
 
 Files are stored in Supabase Storage and shown as evidence on the run (max
 10 MB each); they are skipped if storage isn't configured.
+
+See [`docs/ci/`](docs/ci/README.md) for a helper script
+(`npm run ci:gauge` → `scripts/gauge-ingest.mjs`) and ready-made GitHub Actions,
+GitLab CI and Jenkins recipes that run Gauge and push step results + screenshots.
 
 ### Importing existing automation
 

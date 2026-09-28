@@ -1,0 +1,37 @@
+# .github/workflows/test.yml
+# Runs Gauge and pushes per-step results (+ screenshots) to TestHub.
+name: Gauge → TestHub
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Gauge
+        run: |
+          curl -SsL https://downloads.gauge.org/stable | sh
+          gauge install
+
+      - name: Run Gauge (machine-readable)
+        run: gauge run --machine-readable specs | tee gauge.ndjson
+
+      - name: Send results to TestHub
+        env:
+          TESTHUB_TOKEN: ${{ secrets.TESTHUB_TOKEN }}
+        run: |
+          node scripts/gauge-ingest.mjs \
+            --report gauge.ndjson \
+            --token "$TESTHUB_TOKEN" \
+            --run-name "GitHub ${{ github.run_number }}" \
+            --environment CI \
+            --screenshots reports/html-report/images

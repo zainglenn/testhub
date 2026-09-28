@@ -22,6 +22,7 @@
     "db:import:ado": "tsx prisma/import-ado.ts",
     "db:backfill:workspaces": "tsx prisma/backfill-workspaces.ts",
     "db:studio": "prisma studio",
+    "ci:gauge": "node scripts/gauge-ingest.mjs",
     "postinstall": "prisma generate"
   },
   "dependencies": {

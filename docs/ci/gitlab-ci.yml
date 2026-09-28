@@ -1,0 +1,22 @@
+# .gitlab-ci.yml
+# Runs Gauge and pushes per-step results (+ screenshots) to TestHub.
+stages: [test]
+
+gauge:
+  stage: test
+  image: node:22
+  variables:
+    TESTHUB_API_URL: "https://testhub-one.vercel.app"
+  before_script:
+    - curl -SsL https://downloads.gauge.org/stable | sh
+    - export PATH="$HOME/.gauge/bin:$PATH"
+    - gauge install
+  script:
+    - gauge run --machine-readable specs | tee gauge.ndjson
+    - node scripts/gauge-ingest.mjs
+        --report gauge.ndjson
+        --token "$TESTHUB_TOKEN"
+        --run-name "GitLab $CI_PIPELINE_IID"
+        --environment CI
+        --screenshots reports/html-report/images
+  # Store TESTHUB_TOKEN as a masked CI/CD variable.
