@@ -82,6 +82,26 @@ export const executionInput = z.object({
   dataset: z.string().trim().max(120).optional(),
 });
 
+export const stepResultInput = z.object({
+  runId: z.string().min(1),
+  testCaseId: z.string().min(1),
+  stepId: z.string().min(1),
+  order: z.coerce.number().int().min(0).max(100000),
+  status: z.enum(EXECUTION_STATUSES),
+  comment: optionalText,
+});
+
+export const clearStepResultInput = z.object({
+  runId: z.string().min(1),
+  testCaseId: z.string().min(1),
+  order: z.coerce.number().int().min(0).max(100000),
+});
+
+export const evidenceInput = z.object({
+  executionId: z.string().min(1),
+  executionStepId: z.string().trim().optional(),
+});
+
 export const runInput = z.object({
   projectId: z.string().min(1),
   name: z.string().trim().min(1, "Name is required").max(160),

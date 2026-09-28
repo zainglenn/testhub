@@ -26,6 +26,9 @@ automatically.
   Results → Bugs).
 - **Parameterized cases** — attach workspace parameters to a test case and record
   a result per dataset (data-driven execution).
+- **Step-level results & evidence** — record a pass/fail/blocked/skipped result per
+  test step with an optional comment and attached evidence; the case result is
+  derived from its steps.
 - **Jira status write-back** — optionally transition linked issues on pass/fail
   (configured per project by target status name).
 - **Dashboard** — sidebar-driven shell, overview stat cards, a test-assets-per-project

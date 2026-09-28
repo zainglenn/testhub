@@ -106,6 +106,7 @@ model User {
   attachments  Attachment[]
   auditLogs    AuditLog[]
   sessions     Session[]
+  evidence     Evidence[]
 }
 
 model Session {
@@ -179,6 +180,7 @@ model TestStep {
   expectedResult String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  executionSteps TestExecutionStep[]
 
   @@unique([testCaseId, order])
   @@index([testCaseId])
@@ -236,11 +238,52 @@ model TestExecution {
   executedBy   User?    @relation(fields: [executedById], references: [id], onDelete: SetNull)
   executedAt DateTime @default(now())
   createdAt  DateTime @default(now())
+  stepResults TestExecutionStep[]
+  evidence    Evidence[]
 
   @@unique([runId, testCaseId])
   @@index([projectId, executedAt])
   @@index([testCaseId])
   @@index([runId])
+}
+
+model TestExecutionStep {
+  id          String        @id @default(cuid())
+  executionId String
+  execution   TestExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  testStepId  String?
+  testStep    TestStep?     @relation(fields: [testStepId], references: [id], onDelete: SetNull)
+  order       Int
+  status      String
+  comment     String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  evidence    Evidence[]
+
+  @@unique([executionId, order])
+  @@index([executionId])
+  @@index([testStepId])
+}
+
+model Evidence {
+  id              String              @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  executionId     String
+  execution       TestExecution       @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  executionStepId String?
+  executionStep   TestExecutionStep?  @relation(fields: [executionStepId], references: [id], onDelete: Cascade)
+  filename        String
+  mime            String?
+  size            Int
+  storageKey      String
+  createdById     String?
+  createdBy       User?               @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt       DateTime            @default(now())
+
+  @@index([workspaceId])
+  @@index([executionId])
+  @@index([executionStepId])
 }
 
 model TestRun {
@@ -328,6 +371,7 @@ model Workspace {
   ssoConfig   SsoConfig?
   invitations Invitation[]
   jiraConnections JiraConnection[]
+  evidence    Evidence[]
 }
 
 model WorkspaceMember {

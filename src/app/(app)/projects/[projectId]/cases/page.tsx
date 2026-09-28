@@ -167,7 +167,11 @@ export default async function ProjectCasesPage(
           executions: {
             orderBy: { executedAt: "desc" },
             take: 10,
-            include: { executedBy: { select: { name: true } } },
+            include: {
+              executedBy: { select: { name: true } },
+              stepResults: true,
+              evidence: true,
+            },
           },
           tags: { orderBy: { name: "asc" } },
           jiraLinks: { orderBy: { createdAt: "asc" } },

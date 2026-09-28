@@ -10,7 +10,7 @@ import Typography from "@mui/material/Typography";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ConfirmButton } from "@/components/confirm-button";
-import { RunResultControl } from "@/components/run-result-control";
+import { RunCaseRow } from "@/components/run-case-row";
 import { StatCard } from "@/components/ui";
 import {
   completeTestRun,
@@ -31,11 +31,18 @@ export default async function RunPage(
     where: { id: runId },
     include: {
       project: true,
-      executions: true,
+      executions: { include: { stepResults: true, evidence: true } },
       createdBy: { select: { name: true } },
       items: {
         orderBy: { order: "asc" },
-        include: { testCase: { include: { suite: true } } },
+        include: {
+          testCase: {
+            include: {
+              suite: true,
+              steps: { orderBy: { order: "asc" } },
+            },
+          },
+        },
       },
     },
   });
@@ -228,55 +235,32 @@ export default async function RunPage(
                   {group.items.map((testCase) => {
                     const execution = resultByCase.get(testCase.id);
                     return (
-                      <Stack
+                      <RunCaseRow
                         key={testCase.id}
-                        direction={{ xs: "column", sm: "row" }}
-                        spacing={1}
-                        sx={{
-                          alignItems: { xs: "flex-start", sm: "center" },
-                          justifyContent: "space-between",
-                          gap: 1,
-                        }}
-                      >
-                        <Box sx={{ minWidth: 0 }}>
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            sx={{ alignItems: "baseline" }}
-                          >
-                            <Typography
-                              variant="body2"
-                              sx={{
-                                fontFamily: "var(--font-geist-mono), monospace",
-                                color: "text.secondary",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              {run.project.key}-{testCase.number}
-                            </Typography>
-                            <Link
-                              href={`/projects/${run.project.id}/cases?modal=${testCase.id}`}
-                              style={{ color: "inherit", fontWeight: 500 }}
-                            >
-                              {testCase.title}
-                            </Link>
-                          </Stack>
-                          {execution?.comment ? (
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                            >
-                              {execution.comment}
-                            </Typography>
-                          ) : null}
-                        </Box>
-                        <RunResultControl
-                          runId={run.id}
-                          testCaseId={testCase.id}
-                          status={execution?.status ?? null}
-                          disabled={run.status === "COMPLETED"}
-                        />
-                      </Stack>
+                        runId={run.id}
+                        projectId={run.project.id}
+                        caseKey={`${run.project.key}-${testCase.number}`}
+                        testCaseId={testCase.id}
+                        title={testCase.title}
+                        steps={testCase.steps}
+                        executionId={execution?.id ?? null}
+                        status={execution?.status ?? null}
+                        comment={execution?.comment ?? null}
+                        stepResults={(execution?.stepResults ?? []).map(
+                          (result) => ({
+                            id: result.id,
+                            order: result.order,
+                            status: result.status,
+                            comment: result.comment,
+                          }),
+                        )}
+                        evidence={(execution?.evidence ?? []).map((item) => ({
+                          id: item.id,
+                          filename: item.filename,
+                          executionStepId: item.executionStepId,
+                        }))}
+                        disabled={run.status === "COMPLETED"}
+                      />
                     );
                   })}
                 </Stack>

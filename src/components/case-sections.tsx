@@ -53,6 +53,7 @@ import {
   PRIORITIES,
 } from "@/lib/constants";
 import type {
+  Evidence,
   Field,
   FieldValue,
   JiraIssueLink,
@@ -61,6 +62,7 @@ import type {
   TestCase,
   TestCaseParameter,
   TestExecution,
+  TestExecutionStep,
   TestStep,
   TestSuite,
   Parameter,
@@ -72,7 +74,11 @@ export type CaseWithRelations = TestCase & {
   project: Project & { suites: TestSuite[] };
   suite: TestSuite | null;
   steps: TestStep[];
-  executions: (TestExecution & { executedBy: { name: string } | null })[];
+  executions: (TestExecution & {
+    executedBy: { name: string } | null;
+    stepResults: TestExecutionStep[];
+    evidence: Evidence[];
+  })[];
   tags: Tag[];
   createdBy: { name: string } | null;
   fieldValues: FieldValue[];
@@ -790,6 +796,42 @@ export function CaseRuns({ testCase }: { testCase: CaseWithRelations }) {
                 >
                   {execution.comment}
                 </Typography>
+              ) : null}
+              {execution.stepResults.length > 0 ? (
+                <Stack
+                  direction="row"
+                  spacing={0.5}
+                  sx={{ mt: 0.75, flexWrap: "wrap", rowGap: 0.5 }}
+                >
+                  {[...execution.stepResults]
+                    .sort((a, b) => a.order - b.order)
+                    .map((step, index) => (
+                      <Chip
+                        key={step.id}
+                        size="small"
+                        variant="outlined"
+                        label={`${index + 1} · ${step.status}`}
+                        color={EXECUTION_COLORS[step.status] ?? "default"}
+                      />
+                    ))}
+                  {execution.evidence.map((item) => (
+                    <Box
+                      key={item.id}
+                      component="a"
+                      href={`/api/evidence/${item.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      sx={{ textDecoration: "none" }}
+                    >
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        clickable
+                        label={item.filename}
+                      />
+                    </Box>
+                  ))}
+                </Stack>
               ) : null}
             </Box>
           ))}
