@@ -71,10 +71,28 @@ export const testStepInput = z.object({
   testCaseId: z.string().min(1),
   action: z.string().trim().min(1, "Action is required").max(2000),
   expectedResult: optionalText,
+  calledTestCaseId: z.string().trim().optional(),
 });
 
 export const testStepUpdateInput = testStepInput.extend({
   id: z.string().min(1),
+});
+
+export const testSetInput = z.object({
+  projectId: z.string().min(1),
+  name: z.string().trim().min(1, "Name is required").max(160),
+  description: optionalText,
+});
+
+export const testSetUpdateInput = z.object({
+  id: z.string().min(1),
+  name: z.string().trim().min(1, "Name is required").max(160),
+  description: optionalText,
+});
+
+export const testSetItemInput = z.object({
+  testSetId: z.string().min(1),
+  testCaseId: z.string().min(1),
 });
 
 export const executionInput = z.object({
@@ -111,9 +129,10 @@ export const runInput = z.object({
   environment: optionalText,
   environmentId: z.string().min(1).optional().nullable(),
   configurationId: z.string().min(1).optional().nullable(),
-  scope: z.enum(["ALL", "SUITE", "TAG"]).default("ALL"),
+  scope: z.enum(["ALL", "SUITE", "TAG", "SET"]).default("ALL"),
   suiteId: z.string().min(1).optional().nullable(),
   tagId: z.string().min(1).optional().nullable(),
+  testSetId: z.string().min(1).optional().nullable(),
 });
 
 export const tagInput = z.object({

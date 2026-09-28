@@ -80,10 +80,18 @@ import type {
 
 const MONO = "var(--font-geist-mono), monospace";
 
+type CalledCase = {
+  id: string;
+  number: number;
+  title: string;
+  project: { key: string };
+  steps: { id: string; action: string; expectedResult: string | null }[];
+};
+
 export type CaseWithRelations = TestCase & {
   project: Project & { suites: TestSuite[] };
   suite: TestSuite | null;
-  steps: TestStep[];
+  steps: (TestStep & { calledTestCase: CalledCase | null })[];
   executions: (TestExecution & {
     executedBy: { name: string } | null;
     stepResults: TestExecutionStep[];
@@ -338,16 +346,45 @@ export function CaseGeneralView({
                     {index + 1}
                   </Box>
                   {step.action}
+                  {step.calledTestCase ? (
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      label={`calls ${step.calledTestCase.project.key}-${step.calledTestCase.number}`}
+                      sx={{ ml: 1 }}
+                    />
+                  ) : null}
                 </Typography>
               </AccordionSummary>
               <AccordionDetails>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ whiteSpace: "pre-wrap" }}
-                >
-                  {step.expectedResult ?? "No expected result."}
-                </Typography>
+                {step.calledTestCase ? (
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">
+                      Calls {step.calledTestCase.project.key}-
+                      {step.calledTestCase.number} {step.calledTestCase.title}
+                    </Typography>
+                    <Stack spacing={0.25} sx={{ mt: 0.5 }}>
+                      {step.calledTestCase.steps.map((inner, innerIndex) => (
+                        <Typography
+                          key={inner.id}
+                          variant="caption"
+                          color="text.secondary"
+                        >
+                          {index + 1}.{innerIndex + 1} {inner.action}
+                          {inner.expectedResult ? ` → ${inner.expectedResult}` : ""}
+                        </Typography>
+                      ))}
+                    </Stack>
+                  </Box>
+                ) : (
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ whiteSpace: "pre-wrap" }}
+                  >
+                    {step.expectedResult ?? "No expected result."}
+                  </Typography>
+                )}
               </AccordionDetails>
             </Accordion>
           ))}
@@ -362,11 +399,13 @@ export function CaseGeneralEdit({
   suiteOptions,
   fields,
   sharedSteps,
+  caseOptions,
 }: {
   testCase: CaseWithRelations;
   suiteOptions: { id: string; label: string }[];
   fields: Field[];
   sharedSteps: { id: string; title: string }[];
+  caseOptions: { id: string; label: string }[];
 }) {
   return (
     <Stack spacing={3}>
@@ -604,6 +643,19 @@ export function CaseGeneralEdit({
                 minRows={2}
                 defaultValue={step.expectedResult ?? ""}
               />
+              <TextField
+                select
+                name="calledTestCaseId"
+                label="Call test case (optional)"
+                defaultValue={step.calledTestCaseId ?? ""}
+              >
+                <MenuItem value="">None</MenuItem>
+                {caseOptions.map((option) => (
+                  <MenuItem key={option.id} value={option.id}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
             </ActionForm>
           </Box>
         ))}
@@ -622,6 +674,19 @@ export function CaseGeneralEdit({
           multiline
           minRows={2}
         />
+        <TextField
+          select
+          name="calledTestCaseId"
+          label="Call test case (optional)"
+          defaultValue=""
+        >
+          <MenuItem value="">None</MenuItem>
+          {caseOptions.map((option) => (
+            <MenuItem key={option.id} value={option.id}>
+              {option.label}
+            </MenuItem>
+          ))}
+        </TextField>
       </ActionForm>
     </Stack>
   );

@@ -50,6 +50,7 @@ export async function createTestRun(
   raw.tagId = normalizeOptionalId(raw.tagId);
   raw.environmentId = normalizeOptionalId(raw.environmentId);
   raw.configurationId = normalizeOptionalId(raw.configurationId);
+  raw.testSetId = normalizeOptionalId(raw.testSetId);
 
   const parsed = runInput.safeParse(raw);
   if (!parsed.success) {
@@ -66,6 +67,7 @@ export async function createTestRun(
     scope,
     suiteId,
     tagId,
+    testSetId,
   } = parsed.data;
 
   if (!(await projectInActiveWorkspace(projectId))) {
@@ -111,6 +113,13 @@ export async function createTestRun(
       select: { id: true },
     });
     caseIds = cases.map((testCase) => testCase.id);
+  } else if (scope === "SET" && testSetId) {
+    const items = await prisma.testSetItem.findMany({
+      where: { testSetId, testSet: { projectId } },
+      orderBy: { order: "asc" },
+      select: { testCaseId: true },
+    });
+    caseIds = items.map((item) => item.testCaseId);
   } else {
     const cases = await prisma.testCase.findMany({
       where: { projectId },

@@ -4,28 +4,19 @@ import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import { useState } from "react";
 
-const ENVIRONMENTS = ["Local", "Development", "Staging", "Production", "CI"];
-
 export function RunScopeFields({
   suiteOptions,
   tags,
+  testSets,
 }: {
   suiteOptions: { id: string; label: string }[];
   tags: { id: string; name: string }[];
+  testSets: { id: string; name: string }[];
 }) {
   const [scope, setScope] = useState("ALL");
 
   return (
     <>
-      <TextField select name="environment" label="Environment" defaultValue="">
-        <MenuItem value="">None</MenuItem>
-        {ENVIRONMENTS.map((environment) => (
-          <MenuItem key={environment} value={environment}>
-            {environment}
-          </MenuItem>
-        ))}
-      </TextField>
-
       <TextField
         select
         name="scope"
@@ -39,6 +30,9 @@ export function RunScopeFields({
         </MenuItem>
         <MenuItem value="TAG" disabled={tags.length === 0}>
           By tag
+        </MenuItem>
+        <MenuItem value="SET" disabled={testSets.length === 0}>
+          By test set
         </MenuItem>
       </TextField>
 
@@ -67,6 +61,21 @@ export function RunScopeFields({
           {tags.map((tag) => (
             <MenuItem key={tag.id} value={tag.id}>
               {tag.name}
+            </MenuItem>
+          ))}
+        </TextField>
+      ) : null}
+
+      {scope === "SET" && testSets.length > 0 ? (
+        <TextField
+          select
+          name="testSetId"
+          label="Test set"
+          defaultValue={testSets[0]?.id ?? ""}
+        >
+          {testSets.map((testSet) => (
+            <MenuItem key={testSet.id} value={testSet.id}>
+              {testSet.name}
             </MenuItem>
           ))}
         </TextField>

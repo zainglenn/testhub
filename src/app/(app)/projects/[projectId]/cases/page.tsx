@@ -163,7 +163,17 @@ export default async function ProjectCasesPage(
             },
           },
           suite: true,
-          steps: { orderBy: { order: "asc" } },
+          steps: {
+            orderBy: { order: "asc" },
+            include: {
+              calledTestCase: {
+                include: {
+                  steps: { orderBy: { order: "asc" } },
+                  project: { select: { key: true } },
+                },
+              },
+            },
+          },
           executions: {
             orderBy: { executedAt: "desc" },
             take: 10,
@@ -214,6 +224,16 @@ export default async function ProjectCasesPage(
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   });
+  const caseOptions = (
+    await prisma.testCase.findMany({
+      where: { projectId },
+      orderBy: { number: "asc" },
+      select: { id: true, number: true, title: true },
+    })
+  ).map((item) => ({
+    id: item.id,
+    label: `${project.key}-${item.number} ${item.title}`,
+  }));
   const jiraTab = (testCase: NonNullable<typeof detailCase>) => {
     if (jiraEnabled) {
       return (
@@ -472,6 +492,7 @@ export default async function ProjectCasesPage(
               suiteOptions={suiteOptions}
               fields={fields}
               sharedSteps={sharedSteps}
+              caseOptions={caseOptions.filter((option) => option.id !== selectedCase.id)}
             />
           }
           properties={<CaseProperties testCase={selectedCase} workspaceParameters={workspaceParameters} />}
@@ -492,6 +513,7 @@ export default async function ProjectCasesPage(
               suiteOptions={suiteOptions}
               fields={fields}
               sharedSteps={sharedSteps}
+              caseOptions={caseOptions.filter((option) => option.id !== modalCase.id)}
             />
           }
           properties={<CaseProperties testCase={modalCase} workspaceParameters={workspaceParameters} />}

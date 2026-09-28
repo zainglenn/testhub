@@ -32,6 +32,9 @@ automatically.
 - **Environments, configurations & preconditions** — workspace-level named
   environments and configuration sets (picked when starting a run) plus reusable
   preconditions, with steps, that attach to test cases.
+- **Test sets & modular tests** — group cases into reusable **test sets**
+  (runnable as a run scope) and let a step **call another test case** to reuse its
+  steps.
 - **Exports** — download a run's results as CSV or JUnit XML, and the traceability
   matrix as CSV.
 - **Jira dashboard gadget** — a Forge dashboard gadget showing pass rate and

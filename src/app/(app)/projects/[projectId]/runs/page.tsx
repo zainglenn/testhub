@@ -51,7 +51,7 @@ export default async function ProjectRunsPage(
     notFound();
   }
 
-  const [suiteOptions, members, plans, environments, configurations] = await Promise.all([
+  const [suiteOptions, members, plans, environments, configurations, testSets] = await Promise.all([
     Promise.resolve(flattenSuites(buildSuiteTree(project.suites))),
     prisma.workspaceMember.findMany({
       where: { workspaceId: workspace.id },
@@ -69,6 +69,11 @@ export default async function ProjectRunsPage(
     }),
     prisma.configuration.findMany({
       where: { workspaceId: workspace.id },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+    prisma.testSet.findMany({
+      where: { projectId },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
@@ -109,7 +114,7 @@ export default async function ProjectRunsPage(
             placeholder="Nightly regression"
             required
           />
-          <RunScopeFields suiteOptions={suiteOptions} tags={project.tags} />
+          <RunScopeFields suiteOptions={suiteOptions} tags={project.tags} testSets={testSets} />
           <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
             <TextField
               select

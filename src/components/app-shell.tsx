@@ -181,6 +181,7 @@ export default function AppShell({
         { href: `/projects/${activeProject.id}/cases`, label: "Test cases", icon: ListAltOutlinedIcon },
         { href: `/projects/${activeProject.id}/runs`, label: "Test runs", icon: PlayArrowOutlinedIcon },
         { href: `/projects/${activeProject.id}/plans`, label: "Test plans", icon: AssignmentOutlinedIcon },
+        { href: `/projects/${activeProject.id}/sets`, label: "Test sets", icon: FolderOutlinedIcon },
         { href: `/projects/${activeProject.id}/reports`, label: "Reports", icon: InsightsOutlinedIcon },
         { href: `/projects/${activeProject.id}/traceability`, label: "Traceability", icon: AccountTreeOutlinedIcon },
       ]

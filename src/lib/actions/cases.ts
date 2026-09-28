@@ -21,7 +21,6 @@ import {
   caseInActiveWorkspace,
   getWorkspace,
   projectInActiveWorkspace,
-  stepInActiveWorkspace,
 } from "@/lib/workspace";
 
 function normalizeOptionalId(value: unknown): unknown {
@@ -467,10 +466,29 @@ export async function addStep(
     return { ok: false, error: firstError(parsed.error) };
   }
 
-  const { testCaseId, action, expectedResult } = parsed.data;
+  const { testCaseId, action, expectedResult, calledTestCaseId } = parsed.data;
 
-  if (!(await caseInActiveWorkspace(testCaseId))) {
+  const testCase = await prisma.testCase.findUnique({
+    where: { id: testCaseId },
+    select: { projectId: true },
+  });
+  if (!testCase || !(await projectInActiveWorkspace(testCase.projectId))) {
     return { ok: false, error: "Test case not found in this workspace." };
+  }
+
+  let calledId: string | null = null;
+  if (calledTestCaseId) {
+    if (calledTestCaseId === testCaseId) {
+      return { ok: false, error: "A step cannot call its own test case." };
+    }
+    const called = await prisma.testCase.findFirst({
+      where: { id: calledTestCaseId, projectId: testCase.projectId },
+      select: { id: true },
+    });
+    if (!called) {
+      return { ok: false, error: "Called test case not found in this project." };
+    }
+    calledId = called.id;
   }
 
   const last = await prisma.testStep.aggregate({
@@ -483,6 +501,7 @@ export async function addStep(
       testCaseId,
       action,
       expectedResult,
+      calledTestCaseId: calledId,
       order: (last._max.order ?? -1) + 1,
     },
   });
@@ -503,15 +522,35 @@ export async function updateStep(
     return { ok: false, error: firstError(parsed.error) };
   }
 
-  const { id, testCaseId, action, expectedResult } = parsed.data;
+  const { id, testCaseId, action, expectedResult, calledTestCaseId } =
+    parsed.data;
 
-  if (!(await stepInActiveWorkspace(id))) {
+  const step = await prisma.testStep.findUnique({
+    where: { id },
+    select: { testCase: { select: { projectId: true } } },
+  });
+  if (!step || !(await projectInActiveWorkspace(step.testCase.projectId))) {
     return { ok: false, error: "Test step not found in this workspace." };
+  }
+
+  let calledId: string | null = null;
+  if (calledTestCaseId) {
+    if (calledTestCaseId === testCaseId) {
+      return { ok: false, error: "A step cannot call its own test case." };
+    }
+    const called = await prisma.testCase.findFirst({
+      where: { id: calledTestCaseId, projectId: step.testCase.projectId },
+      select: { id: true },
+    });
+    if (!called) {
+      return { ok: false, error: "Called test case not found in this project." };
+    }
+    calledId = called.id;
   }
 
   await prisma.testStep.update({
     where: { id },
-    data: { action, expectedResult },
+    data: { action, expectedResult, calledTestCaseId: calledId },
   });
 
   await revalidateCase(testCaseId);
