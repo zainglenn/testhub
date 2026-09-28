@@ -185,7 +185,7 @@ and 401 on a bad token. CORS is open for GET, so a browser-based panel can call 
 {
   "issue": { "issueKey": "SCRUM-123", "summary": "…", "status": "In Progress", "url": "https://<site>/browse/SCRUM-123" },
   "summary": { "total": 7, "passed": 5, "failed": 1, "blocked": 0, "skipped": 0, "untested": 1, "coverage": 71 },
-  "tests": [{ "key": "EPP-12", "title": "…", "status": "FAILED", "lastExecutedAt": "…", "project": {}, "suite": {} }],
+  "tests": [{ "key": "EPP-12", "title": "…", "status": "FAIL", "lastExecutedAt": "…", "project": {}, "suite": {} }],
   "linkedBugs": [{ "issueKey": "SCRUM-900", "summary": "…", "status": "Open" }],
   "recentRuns": [{ "id": "…", "name": "…", "status": "COMPLETED", "environment": "Staging", "completedAt": "…" }],
   "generatedAt": "…"
@@ -196,6 +196,23 @@ and 401 on a bad token. CORS is open for GET, so a browser-based panel can call 
 curl -H "Authorization: Bearer $JIRA_PANEL_SECRET" \
   "http://localhost:3000/api/v1/jira/coverage?key=SCRUM-123"
 ```
+
+### Interactive panel API
+
+The embedded panel also writes back to TestHub (same `JIRA_PANEL_SECRET` bearer
+auth). A project is tied to a Jira project via **Settings → Jira project key**, so
+an issue key resolves to the right TestHub project.
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /api/v1/jira/tests?issueKey=SCRUM-123&query=` | Search the mapped project's tests (with latest result). |
+| `POST /api/v1/jira/tests` | Create a test (`title`, optional `description`/`steps`) and link it to the issue. |
+| `POST /api/v1/jira/link` | Link an existing test (`caseKey` like `SCRUM-7`, or its id) to the issue. |
+| `POST /api/v1/jira/execute` | Record a result (`status`, optional `comment`) for a linked test — this also posts the Jira comment and runs write-back. |
+
+In Jira the panel is opened from the issue's app actions (**View app actions** →
+**TestHub coverage**); it renders above the Activity feed with per-test Pass/Fail
+buttons. See `forge/README.md` for deploying the Forge app.
 
 ## Scripts
 
