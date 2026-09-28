@@ -26,6 +26,8 @@ automatically.
   Results → Bugs).
 - **Parameterized cases** — attach workspace parameters to a test case and record
   a result per dataset (data-driven execution).
+- **Jira status write-back** — optionally transition linked issues on pass/fail
+  (configured per project by target status name).
 - **Dashboard** — sidebar-driven shell, overview stat cards, a test-assets-per-project
   bar chart, and a Jira coverage donut (MUI X Charts).
 - **Sortable case grid** — the project case list is a MUI X DataGrid with sorting,
@@ -147,6 +149,11 @@ project uses different keys.
   creates a Jira bug via `POST /rest/api/3/issue` (project key + issue type,
   prefilled summary and description from the case and its latest failed result)
   and links it to the case. Also gated on `write:jira-work`.
+- **Status write-back.** In a project's **Settings → Jira status write-back**,
+  set target status names for pass/fail (e.g. `Done`, `Reopen`). When a result is
+  recorded, linked issues are transitioned to the matching status — resolved
+  against each issue's available transitions by destination status name, so it
+  works across workflows. Leave blank to disable.
 - **Inbound (Jira → TestHub).** `POST /api/jira/webhook` re-fetches an issue and
   refreshes its cached summary/status when it changes in Jira. Set
   `JIRA_WEBHOOK_SECRET`, then in Jira go to **Settings → System → WebHooks** and
@@ -339,7 +346,7 @@ provisions users on first login (matched by email).
 
 ## Roadmap ideas
 
-Jira status/transition write-back and email delivery for invitations.
+Workflows beyond these are unplanned — issues and pull requests are welcome.
 
 ## Deploy (Vercel + Supabase)
 
