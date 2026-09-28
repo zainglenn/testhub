@@ -206,6 +206,7 @@ model TestSet {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   items       TestSetItem[]
+  plans       TestPlan[]
 
   @@index([projectId])
 }
@@ -359,6 +360,8 @@ model TestPlan {
   name        String
   description String?
   status      String   @default("OPEN")
+  testSetId   String?
+  testSet     TestSet? @relation(fields: [testSetId], references: [id], onDelete: SetNull)
   createdById String?
   createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
   createdAt   DateTime @default(now())
@@ -366,6 +369,7 @@ model TestPlan {
   runs        TestRun[]
 
   @@index([projectId])
+  @@index([testSetId])
 }
 
 model TestRunItem {

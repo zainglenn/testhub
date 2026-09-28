@@ -24,6 +24,7 @@ import {
   setProjectRestricted,
 } from "@/lib/actions/project-access";
 import { deleteProject, updateProject, updateProjectJira } from "@/lib/actions/projects";
+import { publishAllCasesToJira } from "@/lib/actions/jira";
 import {
   getJiraConnectionForWorkspace,
   getProjectId,
@@ -286,6 +287,29 @@ export default async function ProjectSettingsPage(
               defaultValue={project.jiraFailStatus ?? ""}
             />
           </ActionForm>
+
+          <Divider sx={{ my: 2 }} />
+          <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+            Publish tests to Jira
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            Create a native Jira issue for every test case that isn&apos;t
+            published yet (up to 50 per run), using the work type above.
+          </Typography>
+          <FormDialog
+            action={publishAllCasesToJira}
+            hidden={{ projectId: project.id }}
+            title="Publish unpublished tests?"
+            description="Creates a Jira issue for each unpublished test case in this project."
+            triggerLabel="Publish unpublished tests"
+            triggerVariant="outlined"
+            submitLabel="Publish"
+            successMessage="Tests published"
+          >
+            <Typography variant="body2" color="text.secondary">
+              Up to 50 cases will be created in Jira and linked back to TestHub.
+            </Typography>
+          </FormDialog>
         </CardContent>
       </Card>
 

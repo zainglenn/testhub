@@ -17,8 +17,10 @@ import {
   addRunToPlan,
   deleteTestPlan,
   setRunPlan,
+  startRunForPlan,
   updateTestPlan,
 } from "@/lib/actions/plans";
+import { StatCard } from "@/components/ui";
 import { RUN_COLORS } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
 import { viewerHasProjectAccess } from "@/lib/project-access";
@@ -36,10 +38,12 @@ export default async function TestPlanPage(
     where: { id: planId },
     include: {
       project: { select: { id: true, key: true, name: true, workspaceId: true, restricted: true } },
+      testSet: { select: { id: true, name: true } },
       runs: {
         orderBy: { createdAt: "desc" },
         include: {
           assignee: { select: { name: true } },
+          executions: { select: { status: true } },
           _count: { select: { executions: true, items: true } },
         },
       },
@@ -62,6 +66,27 @@ export default async function TestPlanPage(
     orderBy: { createdAt: "desc" },
     select: { id: true, name: true },
   });
+
+  const projectTestSets = await prisma.testSet.findMany({
+    where: { projectId: plan.projectId },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+
+  const rollupExecuted = plan.runs.reduce(
+    (sum, run) => sum + run.executions.length,
+    0,
+  );
+  const rollupPassed = plan.runs.reduce(
+    (sum, run) => sum + run.executions.filter((e) => e.status === "PASS").length,
+    0,
+  );
+  const rollupFailed = plan.runs.reduce(
+    (sum, run) => sum + run.executions.filter((e) => e.status === "FAIL").length,
+    0,
+  );
+  const rollupPassRate =
+    rollupExecuted > 0 ? Math.round((rollupPassed / rollupExecuted) * 100) : 0;
 
   return (
     <Stack spacing={3}>
@@ -91,6 +116,12 @@ export default async function TestPlanPage(
           ) : null}
         </Box>
         <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
+          <Box component="form" action={startRunForPlan}>
+            <input type="hidden" name="planId" value={plan.id} />
+            <Button type="submit" variant="contained">
+              Start a run
+            </Button>
+          </Box>
           <Button
             component="a"
             href={`/report/plan/${plan.id}`}
@@ -125,6 +156,20 @@ export default async function TestPlanPage(
               <MenuItem value="OPEN">Open</MenuItem>
               <MenuItem value="COMPLETED">Completed</MenuItem>
             </TextField>
+            <TextField
+              select
+              name="testSetId"
+              label="Test scope (test set)"
+              defaultValue={plan.testSetId ?? ""}
+              helperText="When set, Start a run uses this test set's cases."
+            >
+              <MenuItem value="">All project cases</MenuItem>
+              {projectTestSets.map((testSet) => (
+                <MenuItem key={testSet.id} value={testSet.id}>
+                  {testSet.name}
+                </MenuItem>
+              ))}
+            </TextField>
           </FormDialog>
           <ConfirmButton
             action={deleteTestPlan}
@@ -136,6 +181,19 @@ export default async function TestPlanPage(
           />
         </Stack>
       </Stack>
+
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", sm: "repeat(4, 1fr)" },
+          gap: 2,
+        }}
+      >
+        <StatCard label="Pass rate" value={`${rollupPassRate}%`} />
+        <StatCard label="Passed" value={rollupPassed} />
+        <StatCard label="Failed" value={rollupFailed} />
+        <StatCard label="Executed" value={rollupExecuted} />
+      </Box>
 
       <Card>
         <CardContent>

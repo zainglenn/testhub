@@ -37,6 +37,7 @@ export const planInput = z.object({
   projectId: z.string().min(1),
   name: z.string().trim().min(1, "Name is required").max(120),
   description: optionalText,
+  testSetId: z.string().trim().optional().nullable(),
 });
 
 export const planUpdateInput = z.object({
@@ -44,6 +45,7 @@ export const planUpdateInput = z.object({
   name: z.string().trim().min(1, "Name is required").max(120),
   description: optionalText,
   status: z.enum(["OPEN", "COMPLETED"]).default("OPEN"),
+  testSetId: z.string().trim().optional().nullable(),
 });
 
 export const suiteInput = z.object({

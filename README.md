@@ -35,6 +35,10 @@ automatically.
 - **Test sets & modular tests** — group cases into reusable **test sets**
   (runnable as a run scope) and let a step **call another test case** to reuse its
   steps.
+- **Plan-scoped execution** — a test plan can target a test set; **Start a run**
+  creates a run from that scope, and the plan shows a live pass-rate rollup.
+- **REST + GraphQL APIs** — CI ingestion, embedded-panel/coverage endpoints and a
+  project-scoped **GraphQL** endpoint for tests, runs and coverage.
 - **Exports** — download a run's results as CSV or JUnit XML, and the traceability
   matrix as CSV.
 - **Audit-ready reports** — a print/PDF **run report** and **plan report**
@@ -178,6 +182,8 @@ project uses different keys.
     **team-managed** project, so a Jira admin creates the `Test` work type once
     (Project/Space settings → Work types → Add work type); TestHub then lists it in
     the settings dropdown. It falls back to `Task` if unset.
+  - **Publish unpublished tests** in project settings creates issues for every
+    unpublished case in the project (up to 50 per run).
 - **Status write-back.** In a project's **Settings → Jira status write-back**,
   set target status names for pass/fail (e.g. `Done`, `Reopen`). When a result is
   recorded, linked issues are transitioned to the matching status — resolved
@@ -266,6 +272,22 @@ from the run detail and plan detail pages:
 | `/report/plan/[planId]` | Plan rollup: pass rate and per-run breakdown. |
 
 They render outside the app shell and are session-authenticated.
+
+### GraphQL API
+
+`POST /api/v1/graphql` (or `GET ?query=`) exposes a small project-scoped GraphQL
+schema. Authenticate with a **project API token** (`Authorization: Bearer
+th_…`) — queries are scoped to that project — or with `JIRA_PANEL_SECRET` and an
+explicit `projectKey`.
+
+```graphql
+{
+  project(key: "EPP") { id key name }
+  tests(projectKey: "EPP", limit: 10) { key title latestStatus }
+  runs(projectKey: "EPP", limit: 5) { name status executed passed failed }
+  coverage(issueKey: "EPP-123") { total passed failed coverage }
+}
+```
 
 ## Scripts
 

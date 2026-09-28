@@ -13,7 +13,7 @@ import {
 } from "@/lib/jira/client";
 import { PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { caseInActiveWorkspace } from "@/lib/workspace";
+import { caseInActiveWorkspace, projectInActiveWorkspace } from "@/lib/workspace";
 
 const ISSUE_KEY_PATTERN = /^[A-Z][A-Z0-9_]*-\d+$/;
 
@@ -70,32 +70,26 @@ const MIRROR_CASE_INCLUDE = {
   steps: { orderBy: { order: "asc" as const } },
 };
 
-/** Publishes a test case as a Jira issue (the "test mirror"). */
-export async function publishCaseToJira(
-  _prev: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  if (!(await requirePermission(PERMISSIONS.CASE_MANAGE))) {
-    return { ok: false, error: "You do not have permission to edit cases." };
-  }
-  const id = String(formData.get("testCaseId") ?? "");
-  const testCase = await prisma.testCase.findUnique({
-    where: { id },
-    include: MIRROR_CASE_INCLUDE,
-  });
-  if (!testCase || !(await caseInActiveWorkspace(testCase.id))) {
-    return { ok: false, error: "Test case not found in this workspace." };
-  }
+/** Publishes an already-validated case as a Jira issue ("test mirror"). */
+async function publishMirrorCase(testCase: {
+  id: string;
+  number: number;
+  title: string;
+  description: string | null;
+  preconditions: string | null;
+  steps: { action: string; expectedResult: string | null }[];
+  project: {
+    id: string;
+    key: string;
+    workspaceId: string | null;
+    jiraProjectKey: string | null;
+    jiraTestIssueType: string | null;
+  };
+}): Promise<{ ok: boolean; key?: string; error?: string }> {
   if (!testCase.project.jiraProjectKey) {
     return {
       ok: false,
       error: "Set the Jira project key in project settings first.",
-    };
-  }
-  if (testCase.jiraIssueKey) {
-    return {
-      ok: false,
-      error: `Already published as ${testCase.jiraIssueKey}.`,
     };
   }
   const workspaceId = testCase.project.workspaceId ?? undefined;
@@ -137,7 +131,78 @@ export async function publishCaseToJira(
     // Metadata is best-effort.
   }
 
+  return { ok: true, key: created.key };
+}
+
+/** Publishes a test case as a Jira issue (the "test mirror"). */
+export async function publishCaseToJira(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  if (!(await requirePermission(PERMISSIONS.CASE_MANAGE))) {
+    return { ok: false, error: "You do not have permission to edit cases." };
+  }
+  const id = String(formData.get("testCaseId") ?? "");
+  const testCase = await prisma.testCase.findUnique({
+    where: { id },
+    include: MIRROR_CASE_INCLUDE,
+  });
+  if (!testCase || !(await caseInActiveWorkspace(testCase.id))) {
+    return { ok: false, error: "Test case not found in this workspace." };
+  }
+  if (testCase.jiraIssueKey) {
+    return { ok: false, error: `Already published as ${testCase.jiraIssueKey}.` };
+  }
+
+  const result = await publishMirrorCase(testCase);
+  if (!result.ok) {
+    return { ok: false, error: result.error ?? "Failed to publish." };
+  }
   revalidateCaseAndProject(testCase.id);
+  return { ok: true };
+}
+
+/** Publishes up to 50 unpublished cases in a project to Jira. */
+export async function publishAllCasesToJira(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  if (!(await requirePermission(PERMISSIONS.CASE_MANAGE))) {
+    return { ok: false, error: "You do not have permission to edit cases." };
+  }
+  const projectId = String(formData.get("projectId") ?? "");
+  if (!(await projectInActiveWorkspace(projectId))) {
+    return { ok: false, error: "Project not found in this workspace." };
+  }
+
+  const cases = await prisma.testCase.findMany({
+    where: { projectId, jiraIssueKey: null },
+    orderBy: { number: "asc" },
+    take: 50,
+    include: MIRROR_CASE_INCLUDE,
+  });
+  if (cases.length === 0) {
+    return { ok: false, error: "No unpublished test cases." };
+  }
+
+  let published = 0;
+  let failed = 0;
+  for (const testCase of cases) {
+    const result = await publishMirrorCase(testCase);
+    if (result.ok) published += 1;
+    else failed += 1;
+  }
+
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}/cases`);
+  revalidatePath(`/projects/${projectId}/settings`);
+
+  if (published === 0) {
+    return {
+      ok: false,
+      error: `Published 0 of ${cases.length} (${failed} failed).`,
+    };
+  }
   return { ok: true };
 }
 

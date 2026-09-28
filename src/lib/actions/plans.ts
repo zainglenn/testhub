@@ -42,14 +42,20 @@ export async function createTestPlan(
   const parsed = planInput.safeParse(formToObject(formData));
   if (!parsed.success) return { ok: false, error: firstError(parsed.error) };
 
-  const { projectId, name, description } = parsed.data;
+  const { projectId, name, description, testSetId } = parsed.data;
   if (!(await projectInActiveWorkspace(projectId))) {
     return { ok: false, error: "Project not found in this workspace." };
   }
 
   const session = await getSession();
   const plan = await prisma.testPlan.create({
-    data: { projectId, name, description, createdById: session?.userId ?? null },
+    data: {
+      projectId,
+      name,
+      description,
+      testSetId: testSetId || null,
+      createdById: session?.userId ?? null,
+    },
   });
 
   revalidatePath(`/projects/${projectId}/plans`);
@@ -75,11 +81,66 @@ export async function updateTestPlan(
       name: parsed.data.name,
       description: parsed.data.description,
       status: parsed.data.status,
+      testSetId: parsed.data.testSetId || null,
     },
   });
   revalidatePath(`/projects/${plan.projectId}/plans/${parsed.data.id}`);
   revalidatePath(`/projects/${plan.projectId}/plans`);
   return { ok: true };
+}
+
+export async function startRunForPlan(formData: FormData): Promise<void> {
+  if (!(await requirePermission(PERMISSIONS.RUN_MANAGE))) return;
+  const planId = String(formData.get("planId") ?? "");
+  if (!planId) return;
+
+  const plan = await prisma.testPlan.findUnique({
+    where: { id: planId },
+    select: { id: true, name: true, projectId: true, testSetId: true },
+  });
+  if (!plan || !(await projectInActiveWorkspace(plan.projectId))) return;
+
+  let caseIds: string[] = [];
+  if (plan.testSetId) {
+    const items = await prisma.testSetItem.findMany({
+      where: { testSetId: plan.testSetId },
+      orderBy: { order: "asc" },
+      select: { testCaseId: true },
+    });
+    caseIds = items.map((item) => item.testCaseId);
+  } else {
+    const cases = await prisma.testCase.findMany({
+      where: { projectId: plan.projectId },
+      orderBy: { number: "asc" },
+      select: { id: true },
+    });
+    caseIds = cases.map((testCase) => testCase.id);
+  }
+  if (caseIds.length === 0) return;
+
+  const session = await getSession();
+  const run = await prisma.$transaction(async (tx) => {
+    const created = await tx.testRun.create({
+      data: {
+        projectId: plan.projectId,
+        planId: plan.id,
+        name: `${plan.name} — run`,
+        status: "OPEN",
+        createdById: session?.userId ?? null,
+      },
+    });
+    await tx.testRunItem.createMany({
+      data: caseIds.map((testCaseId, index) => ({
+        runId: created.id,
+        testCaseId,
+        order: index,
+      })),
+    });
+    return created;
+  });
+
+  revalidatePath(`/projects/${plan.projectId}/plans/${plan.id}`);
+  redirect(`/projects/${plan.projectId}/runs/${run.id}`);
 }
 
 export async function deleteTestPlan(formData: FormData): Promise<void> {
