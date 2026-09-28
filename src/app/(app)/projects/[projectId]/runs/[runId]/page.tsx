@@ -138,6 +138,22 @@ export default async function RunPage(
         </Box>
 
         <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
+          <Button
+            component="a"
+            href={`/api/projects/${run.project.id}/runs/${run.id}/export`}
+            variant="outlined"
+            size="small"
+          >
+            Export CSV
+          </Button>
+          <Button
+            component="a"
+            href={`/api/projects/${run.project.id}/runs/${run.id}/export?format=junit`}
+            variant="outlined"
+            size="small"
+          >
+            JUnit
+          </Button>
           {run.status === "OPEN" ? (
             <Box component="form" action={completeTestRun}>
               <input type="hidden" name="id" value={run.id} />

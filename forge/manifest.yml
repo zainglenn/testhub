@@ -7,6 +7,18 @@ modules:
       render: native
       title: TestHub coverage
       icon: https://developer.atlassian.com/platform/forge/images/icons/issue-panel-icon.svg
+  jira:dashboardGadget:
+    - key: testhub-metrics-gadget
+      title: TestHub metrics
+      description: Pass rate and coverage for a TestHub project.
+      thumbnail: https://developer.atlassian.com/platform/forge/images/icons/issue-panel-icon.svg
+      resource: gadget
+      resolver:
+        function: resolver
+      render: native
+      edit:
+        resource: gadget-edit
+        render: native
   function:
     - key: resolver
       handler: index.handler
@@ -14,6 +26,10 @@ modules:
 resources:
   - key: main
     path: src/frontend/index.jsx
+  - key: gadget
+    path: src/frontend/gadget.jsx
+  - key: gadget-edit
+    path: src/frontend/gadget-edit.jsx
 
 app:
   runtime:

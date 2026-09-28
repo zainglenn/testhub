@@ -98,4 +98,14 @@ resolver.define("recordResult", async (req) => {
   });
 });
 
+resolver.define("getMetrics", async (req) => {
+  const projectKey = req.payload?.projectKey;
+  if (!projectKey) return { error: "No project configured for this gadget." };
+  return api(`/api/v1/jira/metrics?projectKey=${encodeURIComponent(projectKey)}`);
+});
+
+resolver.define("getProjectOptions", async () => {
+  return api("/api/v1/jira/metrics?projects=1");
+});
+
 export const handler = resolver.getDefinitions();

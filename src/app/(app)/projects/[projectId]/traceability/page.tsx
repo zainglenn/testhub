@@ -1,4 +1,5 @@
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Chip from "@mui/material/Chip";
@@ -50,13 +51,30 @@ export default async function TraceabilityPage(
 
   return (
     <Stack spacing={3}>
-      <Box>
-        <Typography variant="h1">Traceability</Typography>
-        <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 720 }}>
-          Requirements synced from Jira, traced to TestHub cases, their latest
-          results and any linked bugs.
-        </Typography>
-      </Box>
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={2}
+        sx={{
+          justifyContent: "space-between",
+          alignItems: { xs: "flex-start", sm: "center" },
+        }}
+      >
+        <Box>
+          <Typography variant="h1">Traceability</Typography>
+          <Typography color="text.secondary" sx={{ mt: 0.5, maxWidth: 720 }}>
+            Requirements synced from Jira, traced to TestHub cases, their latest
+            results and any linked bugs.
+          </Typography>
+        </Box>
+        <Button
+          component="a"
+          href={`/api/projects/${project.id}/traceability/export`}
+          variant="outlined"
+          sx={{ flexShrink: 0 }}
+        >
+          Export CSV
+        </Button>
+      </Stack>
 
       <Card>
         <CardContent>
