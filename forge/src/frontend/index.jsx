@@ -237,6 +237,24 @@ const App = () => {
         />
       )}
 
+      {tests.some((test) => (test.steps || []).length > 0) ? (
+        <Stack space="space.100">
+          <Text>Steps</Text>
+          {tests
+            .filter((test) => (test.steps || []).length > 0)
+            .map((test) => (
+              <Stack key={test.id} space="space.025">
+                <Text>{`${test.key} ${test.title}`}</Text>
+                {test.steps.map((step) => (
+                  <Text key={step.order}>
+                    {`${step.order}. ${step.action}${step.expectedResult ? ` => ${step.expectedResult}` : ""}`}
+                  </Text>
+                ))}
+              </Stack>
+            ))}
+        </Stack>
+      ) : null}
+
       {linkedBugs.length > 0 ? (
         <Inline space="space.050" alignBlock="center" shouldWrap>
           <Text>Linked bugs:</Text>

@@ -24,6 +24,11 @@ import {
   setProjectRestricted,
 } from "@/lib/actions/project-access";
 import { deleteProject, updateProject, updateProjectJira } from "@/lib/actions/projects";
+import {
+  getJiraConnectionForWorkspace,
+  getProjectId,
+  getProjectIssueTypes,
+} from "@/lib/jira/client";
 import { deleteApiToken } from "@/lib/actions/tokens";
 import { deleteTag, renameTag } from "@/lib/actions/tags";
 import { prisma } from "@/lib/prisma";
@@ -69,6 +74,16 @@ export default async function ProjectSettingsPage(
   const allMembers = workspaceMembers.map((row) => row.user);
   const projectMembers = allMembers.filter((user) => projectMemberIds.has(user.id));
   const memberCandidates = allMembers.filter((user) => !projectMemberIds.has(user.id));
+
+  const jiraConnection = project.jiraProjectKey
+    ? await getJiraConnectionForWorkspace(workspace.id).catch(() => null)
+    : null;
+  const jiraProjectId = jiraConnection
+    ? await getProjectId(project.jiraProjectKey ?? "", workspace.id)
+    : null;
+  const jiraTestTypes = jiraProjectId
+    ? await getProjectIssueTypes(jiraProjectId, workspace.id)
+    : [];
 
   return (
     <Stack spacing={3} sx={{ maxWidth: 720 }}>
@@ -232,13 +247,32 @@ export default async function ProjectSettingsPage(
               defaultValue={project.jiraProjectKey ?? ""}
               helperText="Ties this project to a Jira project for the embedded panel."
             />
-            <TextField
-              name="jiraTestIssueType"
-              label="Jira issue type for published tests"
-              placeholder="Task"
-              defaultValue={project.jiraTestIssueType ?? ""}
-              helperText="Issue type used when publishing a test case to Jira (defaults to Task)."
-            />
+            {jiraTestTypes.length > 0 ? (
+              <TextField
+                select
+                name="jiraTestIssueType"
+                label="Jira work type for published tests"
+                defaultValue={project.jiraTestIssueType ?? ""}
+                helperText="Native Jira work type used when publishing a test case (e.g. Test)."
+              >
+                <MenuItem value="">None (use Task)</MenuItem>
+                {jiraTestTypes
+                  .filter((type) => !type.subtask)
+                  .map((type) => (
+                    <MenuItem key={type.id} value={type.name}>
+                      {type.name}
+                    </MenuItem>
+                  ))}
+              </TextField>
+            ) : (
+              <TextField
+                name="jiraTestIssueType"
+                label="Jira work type for published tests"
+                placeholder="Test"
+                defaultValue={project.jiraTestIssueType ?? ""}
+                helperText="Add a 'Test' work type to the Jira project, then set it here (defaults to Task)."
+              />
+            )}
             <TextField
               name="jiraPassStatus"
               label="On PASS → status"

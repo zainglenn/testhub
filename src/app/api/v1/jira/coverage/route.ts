@@ -112,6 +112,10 @@ export async function GET(request: Request) {
       jiraLinks: {
         select: { issueKey: true, issueType: true, summary: true, status: true },
       },
+      steps: {
+        orderBy: { order: "asc" },
+        select: { order: true, action: true, expectedResult: true },
+      },
       executions: {
         orderBy: { executedAt: "desc" },
         take: 1,
@@ -131,6 +135,11 @@ export async function GET(request: Request) {
       runId: latest?.runId ?? null,
       project: testCase.project,
       suite: testCase.suite,
+      steps: testCase.steps.map((step, index) => ({
+        order: index + 1,
+        action: step.action,
+        expectedResult: step.expectedResult,
+      })),
       url: appBase
         ? `${appBase}/projects/${testCase.project.id}/cases?case=${testCase.id}`
         : null,

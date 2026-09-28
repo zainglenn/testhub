@@ -178,6 +178,46 @@ export async function getIssue(
   );
 }
 
+/** Resolves a Jira project's numeric id from its key. */
+export async function getProjectId(
+  projectKey: string,
+  workspaceId?: string,
+): Promise<string | null> {
+  try {
+    const project = await jiraFetch<{ id?: string }>(
+      `/project/${encodeURIComponent(projectKey)}`,
+      undefined,
+      workspaceId,
+    );
+    return project.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Lists the issue (work) types available in a Jira project. */
+export async function getProjectIssueTypes(
+  projectId: string,
+  workspaceId?: string,
+): Promise<{ id: string; name: string; subtask: boolean }[]> {
+  try {
+    const types = await jiraFetch<
+      { id: string; name: string; subtask?: boolean }[]
+    >(
+      `/issuetype/project?projectId=${encodeURIComponent(projectId)}`,
+      undefined,
+      workspaceId,
+    );
+    return types.map((type) => ({
+      id: type.id,
+      name: type.name,
+      subtask: Boolean(type.subtask),
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export function issueLinkFields(issue: JiraIssue) {
   return {
     issueKey: issue.key,
