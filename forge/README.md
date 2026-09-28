@@ -19,6 +19,8 @@ issue, their latest results and linked bugs. It calls the TestHub coverage API
   tests in TestHub, and the test **steps** (for mirrored/native Test issues).
 - `src/frontend/gadget.jsx` / `gadget-edit.jsx` render the dashboard gadget and
   its configuration (defaults to the first mapped project when unconfigured).
+- `src/jql.js` backs the `jira:jqlFunction` modules (`testHubFailing`,
+  `testHubHasTests`, `testHubUntested`), returning `key in (…)` fragments.
 
 ## Configure
 

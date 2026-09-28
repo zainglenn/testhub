@@ -243,6 +243,18 @@ In Jira the panel is opened from the issue's app actions (**View app actions** �
 **TestHub coverage**); it renders above the Activity feed with per-test Pass/Fail
 buttons. See `forge/README.md` for deploying the Forge app.
 
+### JQL functions
+
+The Forge app adds three JQL functions so you can search issues by their linked
+tests:
+
+- `issue in testHubFailing()` — issues whose latest linked test is **FAIL**.
+- `issue in testHubHasTests()` — issues with at least one linked test.
+- `issue in testHubUntested()` — issues whose linked tests are all untested.
+
+They're backed by `GET /api/v1/jira/jql-issues?name=<fn>&projectKey=<key>`
+(panel secret), returning `{ keys }`.
+
 ### Metrics API (Jira dashboard gadget)
 
 `GET /api/v1/jira/metrics?projectKey=SCRUM` returns pass rate, coverage, totals
