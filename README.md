@@ -32,6 +32,10 @@ automatically.
 - **Environments, configurations & preconditions** — workspace-level named
   environments and configuration sets (picked when starting a run) plus reusable
   preconditions, with steps, that attach to test cases.
+- **Exports** — download a run's results as CSV or JUnit XML, and the traceability
+  matrix as CSV.
+- **Jira dashboard gadget** — a Forge dashboard gadget showing pass rate and
+  coverage for a mapped TestHub project, right on a Jira dashboard.
 - **Jira status write-back** — optionally transition linked issues on pass/fail
   (configured per project by target status name).
 - **Dashboard** — sidebar-driven shell, overview stat cards, a test-assets-per-project
@@ -213,6 +217,24 @@ an issue key resolves to the right TestHub project.
 In Jira the panel is opened from the issue's app actions (**View app actions** →
 **TestHub coverage**); it renders above the Activity feed with per-test Pass/Fail
 buttons. See `forge/README.md` for deploying the Forge app.
+
+### Metrics API (Jira dashboard gadget)
+
+`GET /api/v1/jira/metrics?projectKey=SCRUM` returns pass rate, coverage, totals
+and a 14-day trend for a mapped project (same `JIRA_PANEL_SECRET` auth).
+`?projects=1` lists the mapped projects; with no `projectKey` it defaults to the
+first mapped project, so the gadget renders without configuration.
+
+### Exports
+
+| Endpoint | Output |
+| --- | --- |
+| `GET /api/projects/[projectId]/runs/[runId]/export` | Run results CSV (incl. per-step results). |
+| `GET /api/projects/[projectId]/runs/[runId]/export?format=junit` | Run results as JUnit XML. |
+| `GET /api/projects/[projectId]/traceability/export` | Traceability matrix CSV. |
+
+Exports are session-authenticated and scoped to the active workspace; buttons
+appear on the run detail and traceability pages.
 
 ## Scripts
 

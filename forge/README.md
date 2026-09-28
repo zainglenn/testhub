@@ -8,13 +8,17 @@ issue, their latest results and linked bugs. It calls the TestHub coverage API
 ## How it works
 
 - `manifest.yml` declares the `jira:issuePanel` module (`render: native`, UI Kit)
-  and a resolver function.
+  and a `jira:dashboardGadget` (with a UI Kit `edit` view to pick a project),
+  plus a resolver function.
 - `src/index.js` (resolver) proxies to the TestHub panel API with a bearer secret
   read from a Forge variable: `GET /api/v1/jira/coverage`, `GET/POST
-  /api/v1/jira/tests`, `POST /api/v1/jira/link` and `POST /api/v1/jira/execute`.
+  /api/v1/jira/tests`, `POST /api/v1/jira/link`, `POST /api/v1/jira/execute` and
+  `GET /api/v1/jira/metrics`.
 - `src/frontend/index.jsx` (UI Kit) renders the coverage summary, the linked
   tests with Pass/Fail buttons, and an "Add tests" modal to search, link or create
   tests in TestHub.
+- `src/frontend/gadget.jsx` / `gadget-edit.jsx` render the dashboard gadget and
+  its configuration (defaults to the first mapped project when unconfigured).
 
 ## Configure
 
