@@ -135,6 +135,7 @@ type JiraSearchResponse = {
 export async function searchIssues(
   jql: string,
   maxResults = 25,
+  workspaceId?: string,
 ): Promise<JiraIssue[]> {
   const params = new URLSearchParams({
     jql,
@@ -145,6 +146,8 @@ export async function searchIssues(
   try {
     const data = await jiraFetch<JiraSearchResponse>(
       `/search/jql?${params.toString()}`,
+      undefined,
+      workspaceId,
     );
     return data.issues ?? [];
   } catch (error) {
@@ -152,6 +155,8 @@ export async function searchIssues(
     if (error instanceof Error && /\((404|410)\)/.test(error.message)) {
       const data = await jiraFetch<JiraSearchResponse>(
         `/search?${params.toString()}`,
+        undefined,
+        workspaceId,
       );
       return data.issues ?? [];
     }

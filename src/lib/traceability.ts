@@ -56,7 +56,7 @@ export async function syncProjectRequirements(
 
   let issues;
   try {
-    issues = await searchIssues(jql, 50);
+    issues = await searchIssues(jql, 50, project.workspaceId ?? undefined);
   } catch (error) {
     return {
       count: 0,
