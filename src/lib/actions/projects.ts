@@ -8,7 +8,7 @@ import { getSession } from "@/lib/auth";
 import { requirePermission } from "@/lib/authz";
 import { PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { firstError, formToObject, projectInput, projectUpdateInput } from "@/lib/validation";
+import { firstError, formToObject, projectInput, projectJiraInput, projectUpdateInput } from "@/lib/validation";
 import { getWorkspace, projectInActiveWorkspace } from "@/lib/workspace";
 
 export async function createProject(
@@ -84,6 +84,31 @@ export async function updateProject(
 
   revalidatePath(`/projects/${id}`);
   revalidatePath("/");
+  return { ok: true };
+}
+
+export async function updateProjectJira(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  if (!(await requirePermission(PERMISSIONS.PROJECT_MANAGE))) {
+    return { ok: false, error: "You do not have permission to manage projects." };
+  }
+  const parsed = projectJiraInput.safeParse(formToObject(formData));
+  if (!parsed.success) return { ok: false, error: firstError(parsed.error) };
+
+  if (!(await projectInActiveWorkspace(parsed.data.id))) {
+    return { ok: false, error: "Project not found in this workspace." };
+  }
+
+  await prisma.project.update({
+    where: { id: parsed.data.id },
+    data: {
+      jiraPassStatus: parsed.data.jiraPassStatus,
+      jiraFailStatus: parsed.data.jiraFailStatus,
+    },
+  });
+  revalidatePath(`/projects/${parsed.data.id}/settings`);
   return { ok: true };
 }
 

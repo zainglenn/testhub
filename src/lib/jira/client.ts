@@ -214,7 +214,6 @@ export async function addComment(
 }
 
 export type CreatedIssue = { id: string; key: string };
-
 export async function createIssue(
   input: {
     projectKey: string;
@@ -241,4 +240,35 @@ export async function createIssue(
     },
     workspaceId,
   );
+}
+
+/**
+ * Transitions an issue to the given target status, matching the issue's
+ * available transitions by their destination status name. Returns false when no
+ * such transition exists (workflows differ per project).
+ */
+export async function transitionIssue(
+  issueKey: string,
+  targetStatus: string,
+  workspaceId?: string,
+): Promise<boolean> {
+  const data = await jiraFetch<{
+    transitions?: { id: string; name: string; to?: { name?: string } }[];
+  }>(`/issue/${encodeURIComponent(issueKey)}/transitions`, undefined, workspaceId);
+
+  const wanted = targetStatus.trim().toLowerCase();
+  if (!wanted) return false;
+
+  const match = (data.transitions ?? []).find(
+    (transition) =>
+      (transition.to?.name ?? transition.name).trim().toLowerCase() === wanted,
+  );
+  if (!match) return false;
+
+  await jiraFetch(
+    `/issue/${encodeURIComponent(issueKey)}/transitions`,
+    { method: "POST", body: JSON.stringify({ transition: { id: match.id } }) },
+    workspaceId,
+  );
+  return true;
 }

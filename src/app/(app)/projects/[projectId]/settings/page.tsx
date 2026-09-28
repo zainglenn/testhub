@@ -23,7 +23,7 @@ import {
   removeProjectMember,
   setProjectRestricted,
 } from "@/lib/actions/project-access";
-import { deleteProject, updateProject } from "@/lib/actions/projects";
+import { deleteProject, updateProject, updateProjectJira } from "@/lib/actions/projects";
 import { deleteApiToken } from "@/lib/actions/tokens";
 import { deleteTag, renameTag } from "@/lib/actions/tags";
 import { prisma } from "@/lib/prisma";
@@ -206,6 +206,38 @@ export default async function ProjectSettingsPage(
               )}
             </Box>
           ) : null}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent>
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            Jira status write-back
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Optionally move linked Jira issues when a result is recorded. Enter
+            the target <strong>status name</strong> (e.g. <em>Done</em>,{" "}
+            <em>In Progress</em>); leave blank to disable.
+          </Typography>
+          <ActionForm
+            action={updateProjectJira}
+            hidden={{ id: project.id }}
+            submitLabel="Save write-back"
+            successMessage="Write-back updated"
+          >
+            <TextField
+              name="jiraPassStatus"
+              label="On PASS → status"
+              placeholder="Done"
+              defaultValue={project.jiraPassStatus ?? ""}
+            />
+            <TextField
+              name="jiraFailStatus"
+              label="On FAIL → status"
+              placeholder="Reopen"
+              defaultValue={project.jiraFailStatus ?? ""}
+            />
+          </ActionForm>
         </CardContent>
       </Card>
 

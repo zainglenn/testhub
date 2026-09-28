@@ -1,4 +1,8 @@
-import { addComment, getJiraConnectionForWorkspace } from "@/lib/jira/client";
+import {
+  addComment,
+  getJiraConnectionForWorkspace,
+  transitionIssue,
+} from "@/lib/jira/client";
 import { isJiraEnabled } from "@/lib/jira/config";
 import { prisma } from "@/lib/prisma";
 
@@ -31,7 +35,15 @@ export async function commentCaseResult(
   try {
     const testCase = await prisma.testCase.findUnique({
       where: { id: testCaseId },
-      select: { project: { select: { workspaceId: true } } },
+      select: {
+        project: {
+          select: {
+            workspaceId: true,
+            jiraPassStatus: true,
+            jiraFailStatus: true,
+          },
+        },
+      },
     });
     const workspaceId = testCase?.project.workspaceId ?? null;
     if (!(await hasConnection(workspaceId))) return;
@@ -51,6 +63,21 @@ export async function commentCaseResult(
         addComment(link.issueKey, ["TestHub update", line], workspaceId ?? undefined),
       ),
     );
+
+    // Optional status write-back: transition linked issues when configured.
+    const target =
+      status === "PASS"
+        ? testCase?.project.jiraPassStatus
+        : status === "FAIL"
+          ? testCase?.project.jiraFailStatus
+          : null;
+    if (target) {
+      await Promise.allSettled(
+        links.map((link) =>
+          transitionIssue(link.issueKey, target, workspaceId ?? undefined),
+        ),
+      );
+    }
   } catch {
     // Swallow — outbound sync must not break the primary action.
   }

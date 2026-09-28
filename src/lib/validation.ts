@@ -25,6 +25,12 @@ export const projectUpdateInput = z.object({
   description: optionalText,
 });
 
+export const projectJiraInput = z.object({
+  id: z.string().min(1),
+  jiraPassStatus: optionalText,
+  jiraFailStatus: optionalText,
+});
+
 export const planInput = z.object({
   projectId: z.string().min(1),
   name: z.string().trim().min(1, "Name is required").max(120),
