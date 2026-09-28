@@ -15,8 +15,8 @@ issue, their latest results and linked bugs. It calls the TestHub coverage API
   /api/v1/jira/tests`, `POST /api/v1/jira/link`, `POST /api/v1/jira/execute` and
   `GET /api/v1/jira/metrics`.
 - `src/frontend/index.jsx` (UI Kit) renders the coverage summary, the linked
-  tests with Pass/Fail buttons, and an "Add tests" modal to search, link or create
-  tests in TestHub.
+  tests with Pass/Fail buttons, an "Add tests" modal to search, link or create
+  tests in TestHub, and the test **steps** (for mirrored/native Test issues).
 - `src/frontend/gadget.jsx` / `gadget-edit.jsx` render the dashboard gadget and
   its configuration (defaults to the first mapped project when unconfigured).
 

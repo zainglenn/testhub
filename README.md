@@ -161,10 +161,16 @@ project uses different keys.
   creates a Jira bug via `POST /rest/api/3/issue` (project key + issue type,
   prefilled summary and description from the case and its latest failed result)
   and links it to the case. Also gated on `write:jira-work`.
-- **Test mirror.** In a case's **Jira** tab, **Publish to Jira** creates a Jira
-  issue mirroring the test (steps + preconditions, using the project's
-  `jiraTestIssueType`, default `Task`), **Sync** pushes later edits, and
-  **Unpublish** detaches it. This makes tests JQL-searchable in Jira.
+- **Test mirror / native Jira work types.** In a project's **Settings → Jira**
+  pick the work type used for published tests — e.g. a native **Test** work type —
+  then **Publish to Jira** on a case creates a Jira issue of that type (steps +
+  preconditions), **Sync** pushes later edits and **Unpublish** detaches it. These
+  issues are searchable with JQL (`issuetype = Test`) and appear on boards, and the
+  embedded panel shows the test's steps.
+  - Jira Cloud has no public API for a Forge/OAuth app to add a work type to a
+    **team-managed** project, so a Jira admin creates the `Test` work type once
+    (Project/Space settings → Work types → Add work type); TestHub then lists it in
+    the settings dropdown. It falls back to `Task` if unset.
 - **Status write-back.** In a project's **Settings → Jira status write-back**,
   set target status names for pass/fail (e.g. `Done`, `Reopen`). When a result is
   recorded, linked issues are transitioned to the matching status — resolved
