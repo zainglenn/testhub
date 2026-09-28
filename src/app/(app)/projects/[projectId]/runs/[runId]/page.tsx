@@ -154,6 +154,15 @@ export default async function RunPage(
           >
             JUnit
           </Button>
+          <Button
+            component="a"
+            href={`/report/run/${run.id}`}
+            target="_blank"
+            variant="outlined"
+            size="small"
+          >
+            Report
+          </Button>
           {run.status === "OPEN" ? (
             <Box component="form" action={completeTestRun}>
               <input type="hidden" name="id" value={run.id} />

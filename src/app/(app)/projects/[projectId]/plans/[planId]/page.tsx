@@ -91,6 +91,14 @@ export default async function TestPlanPage(
           ) : null}
         </Box>
         <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
+          <Button
+            component="a"
+            href={`/report/plan/${plan.id}`}
+            target="_blank"
+            variant="outlined"
+          >
+            Report
+          </Button>
           <FormDialog
             action={updateTestPlan}
             hidden={{ id: plan.id }}

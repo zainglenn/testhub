@@ -37,6 +37,8 @@ automatically.
   steps.
 - **Exports** — download a run's results as CSV or JUnit XML, and the traceability
   matrix as CSV.
+- **Audit-ready reports** — a print/PDF **run report** and **plan report**
+  (pass rates, per-case results, step results and evidence).
 - **Jira dashboard gadget** — a Forge dashboard gadget showing pass rate and
   coverage for a mapped TestHub project, right on a Jira dashboard.
 - **Publish tests to Jira** — create a Jira issue mirroring a test case (with its
@@ -252,6 +254,18 @@ first mapped project, so the gadget renders without configuration.
 
 Exports are session-authenticated and scoped to the active workspace; buttons
 appear on the run detail and traceability pages.
+
+### Reports
+
+Print- or PDF-ready pages (use the browser's print dialog → *Save as PDF*), opened
+from the run detail and plan detail pages:
+
+| Route | Contents |
+| --- | --- |
+| `/report/run/[runId]` | Run summary, per-case results, step results, failures with evidence. |
+| `/report/plan/[planId]` | Plan rollup: pass rate and per-run breakdown. |
+
+They render outside the app shell and are session-authenticated.
 
 ## Scripts
 
