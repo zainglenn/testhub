@@ -40,9 +40,12 @@ import {
 import { deleteExecution, recordExecution } from "@/lib/actions/executions";
 import {
   createBugFromCase,
+  publishCaseToJira,
   refreshCaseLinks,
   refreshIssueLink,
+  syncCaseToJira,
   unlinkIssue,
+  unpublishCaseFromJira,
 } from "@/lib/actions/jira";
 import { addTagToCase, removeTagFromCase } from "@/lib/actions/tags";
 import { setCaseParameters } from "@/lib/actions/case-parameters";
@@ -976,6 +979,71 @@ export function CaseJira({
 
   return (
     <Box>
+      {connection ? (
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+            Test mirror
+          </Typography>
+          {testCase.jiraIssueKey ? (
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ alignItems: "center", flexWrap: "wrap" }}
+            >
+              <Typography
+                component="a"
+                href={`${connection.siteUrl}/browse/${testCase.jiraIssueKey}`}
+                target="_blank"
+                rel="noreferrer"
+                variant="body2"
+                sx={{
+                  fontWeight: 600,
+                  color: "primary.main",
+                  textDecoration: "none",
+                }}
+              >
+                {testCase.jiraIssueKey}
+              </Typography>
+              <Box component="form" action={syncCaseToJira}>
+                <input type="hidden" name="testCaseId" value={testCase.id} />
+                <Button size="small" type="submit" startIcon={<RefreshIcon />}>
+                  Sync
+                </Button>
+              </Box>
+              <ConfirmButton
+                action={unpublishCaseFromJira}
+                hidden={{ testCaseId: testCase.id }}
+                title="Unpublish test?"
+                description="Detach this test from its published Jira issue? The issue stays in Jira."
+                confirmLabel="Unpublish"
+                label="Unpublish"
+                color="inherit"
+              />
+            </Stack>
+          ) : (
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ alignItems: "center", flexWrap: "wrap" }}
+            >
+              <FormDialog
+                action={publishCaseToJira}
+                hidden={{ testCaseId: testCase.id }}
+                title="Publish to Jira"
+                description="Create a Jira issue representing this test case (using the configured issue type)."
+                triggerLabel="Publish to Jira"
+                triggerVariant="outlined"
+                submitLabel="Publish"
+                successMessage="Published to Jira"
+              >
+                <Typography variant="body2" color="text.secondary">
+                  A Jira issue mirroring this test will be created and linked.
+                </Typography>
+              </FormDialog>
+            </Stack>
+          )}
+        </Box>
+      ) : null}
       <Stack
         direction="row"
         sx={{ justifyContent: "space-between", alignItems: "center", mb: 1 }}

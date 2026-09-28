@@ -107,6 +107,9 @@ export async function updateProjectJira(
       jiraProjectKey: parsed.data.jiraProjectKey
         ? parsed.data.jiraProjectKey.toUpperCase()
         : null,
+      jiraTestIssueType: parsed.data.jiraTestIssueType
+        ? parsed.data.jiraTestIssueType
+        : null,
       jiraPassStatus: parsed.data.jiraPassStatus,
       jiraFailStatus: parsed.data.jiraFailStatus,
     },

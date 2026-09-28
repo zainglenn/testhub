@@ -22,6 +22,7 @@ model Project {
   jiraProjectKey String?
   jiraPassStatus String?
   jiraFailStatus String?
+  jiraTestIssueType String?
   createdById String?
   createdBy   User?           @relation(fields: [createdById], references: [id], onDelete: SetNull)
   createdAt   DateTime        @default(now())
@@ -152,6 +153,7 @@ model TestCase {
   title        String
   description  String?
   preconditions String?
+  jiraIssueKey  String?
   priority     String          @default("MEDIUM")
   status       String          @default("DRAFT")
   createdById  String?
@@ -171,6 +173,7 @@ model TestCase {
   @@unique([projectId, externalId])
   @@index([projectId])
   @@index([suiteId])
+  @@index([jiraIssueKey])
 }
 
 model TestStep {

@@ -247,6 +247,28 @@ export async function createIssue(
   );
 }
 
+export async function updateIssue(
+  issueKey: string,
+  input: { summary?: string; descriptionLines?: string[] },
+  workspaceId?: string,
+): Promise<void> {
+  await jiraFetch(
+    `/issue/${encodeURIComponent(issueKey)}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({
+        fields: {
+          ...(input.summary ? { summary: input.summary } : {}),
+          ...(input.descriptionLines
+            ? { description: adfDocument(input.descriptionLines) }
+            : {}),
+        },
+      }),
+    },
+    workspaceId,
+  );
+}
+
 /**
  * Transitions an issue to the given target status, matching the issue's
  * available transitions by their destination status name. Returns false when no

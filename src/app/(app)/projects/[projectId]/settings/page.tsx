@@ -233,6 +233,13 @@ export default async function ProjectSettingsPage(
               helperText="Ties this project to a Jira project for the embedded panel."
             />
             <TextField
+              name="jiraTestIssueType"
+              label="Jira issue type for published tests"
+              placeholder="Task"
+              defaultValue={project.jiraTestIssueType ?? ""}
+              helperText="Issue type used when publishing a test case to Jira (defaults to Task)."
+            />
+            <TextField
               name="jiraPassStatus"
               label="On PASS → status"
               placeholder="Done"

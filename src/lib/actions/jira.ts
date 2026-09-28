@@ -9,6 +9,7 @@ import {
   deleteJiraConnection,
   getIssue,
   issueLinkFields,
+  updateIssue,
 } from "@/lib/jira/client";
 import { PERMISSIONS } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
@@ -24,6 +25,168 @@ async function revalidateCaseAndProject(testCaseId: string) {
   if (testCase) {
     revalidatePath(`/projects/${testCase.projectId}/cases`);
   }
+}
+
+type MirrorCase = {
+  id: string;
+  number: number;
+  title: string;
+  description: string | null;
+  preconditions: string | null;
+  steps: { action: string; expectedResult: string | null }[];
+};
+
+function caseDescriptionLines(
+  testCase: MirrorCase,
+  project: { id: string; key: string },
+): string[] {
+  const lines: string[] = [`TestHub test ${project.key}-${testCase.number}`];
+  if (testCase.description) lines.push(testCase.description);
+  if (testCase.preconditions) {
+    lines.push(`Preconditions: ${testCase.preconditions}`);
+  }
+  testCase.steps.forEach((step, index) => {
+    lines.push(
+      `${index + 1}. ${step.action}${step.expectedResult ? ` => ${step.expectedResult}` : ""}`,
+    );
+  });
+  const base = (process.env.APP_BASE_URL ?? "").replace(/\/$/, "");
+  if (base) {
+    lines.push(`TestHub: ${base}/projects/${project.id}/cases?case=${testCase.id}`);
+  }
+  return lines;
+}
+
+const MIRROR_CASE_INCLUDE = {
+  project: {
+    select: {
+      id: true,
+      key: true,
+      workspaceId: true,
+      jiraProjectKey: true,
+      jiraTestIssueType: true,
+    },
+  },
+  steps: { orderBy: { order: "asc" as const } },
+};
+
+/** Publishes a test case as a Jira issue (the "test mirror"). */
+export async function publishCaseToJira(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  if (!(await requirePermission(PERMISSIONS.CASE_MANAGE))) {
+    return { ok: false, error: "You do not have permission to edit cases." };
+  }
+  const id = String(formData.get("testCaseId") ?? "");
+  const testCase = await prisma.testCase.findUnique({
+    where: { id },
+    include: MIRROR_CASE_INCLUDE,
+  });
+  if (!testCase || !(await caseInActiveWorkspace(testCase.id))) {
+    return { ok: false, error: "Test case not found in this workspace." };
+  }
+  if (!testCase.project.jiraProjectKey) {
+    return {
+      ok: false,
+      error: "Set the Jira project key in project settings first.",
+    };
+  }
+  if (testCase.jiraIssueKey) {
+    return {
+      ok: false,
+      error: `Already published as ${testCase.jiraIssueKey}.`,
+    };
+  }
+  const workspaceId = testCase.project.workspaceId ?? undefined;
+
+  let created;
+  try {
+    created = await createIssue(
+      {
+        projectKey: testCase.project.jiraProjectKey,
+        issueType: testCase.project.jiraTestIssueType || "Task",
+        summary: testCase.title,
+        descriptionLines: caseDescriptionLines(testCase, testCase.project),
+      },
+      workspaceId,
+    );
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error ? error.message : "Failed to create the issue.",
+    };
+  }
+
+  await prisma.testCase.update({
+    where: { id: testCase.id },
+    data: { jiraIssueKey: created.key },
+  });
+
+  try {
+    const issue = await getIssue(created.key, workspaceId);
+    await prisma.jiraIssueLink.upsert({
+      where: {
+        testCaseId_issueKey: { testCaseId: testCase.id, issueKey: created.key },
+      },
+      create: { testCaseId: testCase.id, ...issueLinkFields(issue) },
+      update: issueLinkFields(issue),
+    });
+  } catch {
+    // Metadata is best-effort.
+  }
+
+  revalidateCaseAndProject(testCase.id);
+  return { ok: true };
+}
+
+/** Pushes the latest title/description/steps to the published Jira issue. */
+export async function syncCaseToJira(formData: FormData): Promise<void> {
+  if (!(await requirePermission(PERMISSIONS.CASE_MANAGE))) return;
+  const id = String(formData.get("testCaseId") ?? "");
+  const testCase = await prisma.testCase.findUnique({
+    where: { id },
+    include: MIRROR_CASE_INCLUDE,
+  });
+  if (!testCase || !testCase.jiraIssueKey) return;
+  if (!(await caseInActiveWorkspace(testCase.id))) return;
+
+  try {
+    await updateIssue(
+      testCase.jiraIssueKey,
+      {
+        summary: testCase.title,
+        descriptionLines: caseDescriptionLines(testCase, testCase.project),
+      },
+      testCase.project.workspaceId ?? undefined,
+    );
+  } catch {
+    // Leave the mapping in place even if Jira is unreachable.
+  }
+  revalidateCaseAndProject(testCase.id);
+}
+
+/** Detaches the mirror mapping (the Jira issue itself is left in place). */
+export async function unpublishCaseFromJira(formData: FormData): Promise<void> {
+  if (!(await requirePermission(PERMISSIONS.CASE_MANAGE))) return;
+  const id = String(formData.get("testCaseId") ?? "");
+  const testCase = await prisma.testCase.findUnique({
+    where: { id },
+    select: { id: true, jiraIssueKey: true },
+  });
+  if (!testCase || !(await caseInActiveWorkspace(testCase.id))) return;
+
+  if (testCase.jiraIssueKey) {
+    await prisma.jiraIssueLink.deleteMany({
+      where: { testCaseId: testCase.id, issueKey: testCase.jiraIssueKey },
+    });
+  }
+  await prisma.testCase.update({
+    where: { id: testCase.id },
+    data: { jiraIssueKey: null },
+  });
+  revalidateCaseAndProject(testCase.id);
 }
 
 export async function disconnectJira(): Promise<void> {
