@@ -27,6 +27,7 @@ export const projectUpdateInput = z.object({
 
 export const projectJiraInput = z.object({
   id: z.string().min(1),
+  jiraProjectKey: z.string().trim().max(12).optional(),
   jiraPassStatus: optionalText,
   jiraFailStatus: optionalText,
 });

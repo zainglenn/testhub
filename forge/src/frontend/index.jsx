@@ -2,15 +2,24 @@ import React, { useEffect, useState } from "react";
 import ForgeReconciler, {
   Stack,
   Inline,
+  Box,
   Heading,
   Text,
   Lozenge,
   Link,
   LinkButton,
+  Button,
   ProgressBar,
   DynamicTable,
   SectionMessage,
   Spinner,
+  Modal,
+  ModalTransition,
+  ModalHeader,
+  ModalTitle,
+  ModalBody,
+  ModalFooter,
+  Textfield,
   useProductContext,
 } from "@forge/react";
 import { invoke } from "@forge/bridge";
@@ -33,14 +42,83 @@ const App = () => {
   const context = useProductContext();
   const issueKey =
     context && context.platformContext ? context.platformContext.issueKey : undefined;
+
   const [data, setData] = useState(undefined);
   const [error, setError] = useState(undefined);
+  const [notice, setNotice] = useState(undefined);
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    invoke("getCoverage", { key: issueKey })
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [newTitle, setNewTitle] = useState("");
+  const [newDescription, setNewDescription] = useState("");
+
+  const refresh = () => {
+    invoke("getCoverage", { key: issueKey, issueKey })
       .then(setData)
       .catch((e) => setError(e && e.message ? e.message : String(e)));
+  };
+
+  useEffect(() => {
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const run = (promise, onOk) => {
+    setBusy(true);
+    setNotice(undefined);
+    promise
+      .then((result) => {
+        if (result && result.error) {
+          setNotice({ appearance: "error", text: result.error });
+        } else if (onOk) {
+          onOk(result);
+        }
+      })
+      .catch((e) => setNotice({ appearance: "error", text: e && e.message ? e.message : String(e) }))
+      .finally(() => setBusy(false));
+  };
+
+  const search = () =>
+    run(invoke("searchTests", { issueKey, query }), (result) => {
+      setResults(result.tests || []);
+      if ((result.tests || []).length === 0) {
+        setNotice({ appearance: "information", text: "No tests matched." });
+      }
+    });
+
+  const link = (caseKey) =>
+    run(invoke("linkTest", { issueKey, caseKey }), () => {
+      setOpen(false);
+      setNotice({ appearance: "success", text: `Linked ${caseKey}.` });
+      refresh();
+    });
+
+  const createTest = () =>
+    run(
+      invoke("createTest", {
+        issueKey,
+        title: newTitle,
+        description: newDescription,
+      }),
+      (result) => {
+        setOpen(false);
+        setNewTitle("");
+        setNewDescription("");
+        setNotice({
+          appearance: "success",
+          text: `Created ${result.test ? result.test.key : "test"}.`,
+        });
+        refresh();
+      },
+    );
+
+  const record = (caseKey, status) =>
+    run(invoke("recordResult", { issueKey, caseKey, status }), () => {
+      setNotice({ appearance: "success", text: `Recorded ${status} for ${caseKey}.` });
+      refresh();
+    });
 
   if (error) {
     return (
@@ -73,6 +151,9 @@ const App = () => {
         <Lozenge appearance={coverageAppearance(summary.coverage)}>
           {`${summary.coverage}% passing`}
         </Lozenge>
+        <Button appearance="subtle" spacing="compact" onClick={() => setOpen(true)}>
+          Add tests
+        </Button>
       </Inline>
 
       <ProgressBar value={summary.coverage / 100} />
@@ -80,6 +161,12 @@ const App = () => {
       <Text>
         {`${summary.total} test(s) · ${summary.passed} passed · ${summary.failed} failed`}
       </Text>
+
+      {notice ? (
+        <SectionMessage appearance={notice.appearance}>
+          <Text>{notice.text}</Text>
+        </SectionMessage>
+      ) : null}
 
       {tests.length === 0 ? (
         <SectionMessage appearance="information">
@@ -92,6 +179,7 @@ const App = () => {
               { key: "test", content: "Test" },
               { key: "status", content: "Result" },
               { key: "when", content: "Last run" },
+              { key: "actions", content: "Record" },
             ],
           }}
           rows={tests.map((test) => ({
@@ -121,6 +209,29 @@ const App = () => {
                   ? new Date(test.lastExecutedAt).toLocaleString()
                   : "—",
               },
+              {
+                key: "actions",
+                content: (
+                  <Inline space="space.050">
+                    <Button
+                      appearance="primary"
+                      spacing="compact"
+                      isDisabled={busy}
+                      onClick={() => record(test.key, "PASS")}
+                    >
+                      Pass
+                    </Button>
+                    <Button
+                      appearance="danger"
+                      spacing="compact"
+                      isDisabled={busy}
+                      onClick={() => record(test.key, "FAIL")}
+                    >
+                      Fail
+                    </Button>
+                  </Inline>
+                ),
+              },
             ],
           }))}
         />
@@ -148,6 +259,96 @@ const App = () => {
           </LinkButton>
         </Inline>
       ) : null}
+
+      <ModalTransition>
+        {open ? (
+          <Modal onClose={() => setOpen(false)}>
+            <ModalHeader>
+              <ModalTitle>Add tests to this issue</ModalTitle>
+            </ModalHeader>
+            <ModalBody>
+              <Stack space="space.150">
+                <Text>Link an existing test</Text>
+                <Inline space="space.100" alignBlock="center">
+                  <Box>
+                    <Textfield
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Search tests by title"
+                    />
+                  </Box>
+                  <Button appearance="primary" isDisabled={busy} onClick={search}>
+                    Search
+                  </Button>
+                </Inline>
+
+                {results.length > 0 ? (
+                  <DynamicTable
+                    head={{
+                      cells: [
+                        { key: "test", content: "Test" },
+                        { key: "status", content: "Result" },
+                        { key: "action", content: "" },
+                      ],
+                    }}
+                    rows={results.map((test) => ({
+                      key: test.id,
+                      cells: [
+                        { key: "test", content: `${test.key} ${test.title}` },
+                        {
+                          key: "status",
+                          content: (
+                            <Lozenge appearance={TEST_APPEARANCE[test.status] || "default"}>
+                              {test.status}
+                            </Lozenge>
+                          ),
+                        },
+                        {
+                          key: "action",
+                          content: (
+                            <Button
+                              appearance="primary"
+                              spacing="compact"
+                              isDisabled={busy}
+                              onClick={() => link(test.key)}
+                            >
+                              Link
+                            </Button>
+                          ),
+                        },
+                      ],
+                    }))}
+                  />
+                ) : null}
+
+                <Text>Or create a new test</Text>
+                <Textfield
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder="Test title"
+                />
+                <Textfield
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                  placeholder="Description (optional)"
+                />
+              </Stack>
+            </ModalBody>
+            <ModalFooter>
+              <Button appearance="subtle" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                appearance="primary"
+                isDisabled={busy || !newTitle}
+                onClick={createTest}
+              >
+                Create &amp; link
+              </Button>
+            </ModalFooter>
+          </Modal>
+        ) : null}
+      </ModalTransition>
     </Stack>
   );
 };

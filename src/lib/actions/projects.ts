@@ -104,6 +104,9 @@ export async function updateProjectJira(
   await prisma.project.update({
     where: { id: parsed.data.id },
     data: {
+      jiraProjectKey: parsed.data.jiraProjectKey
+        ? parsed.data.jiraProjectKey.toUpperCase()
+        : null,
       jiraPassStatus: parsed.data.jiraPassStatus,
       jiraFailStatus: parsed.data.jiraFailStatus,
     },

@@ -4,35 +4,98 @@ const resolver = new Resolver();
 
 const BASE_URL = process.env.TESTHUB_BASE_URL ?? "https://testhub-one.vercel.app";
 
-resolver.define("getCoverage", async (req) => {
+function issueKeyFrom(req) {
   const context = req.context ?? {};
-  const issueKey =
+  return (
+    req.payload?.issueKey ??
     context.extension?.issue?.key ??
     context.platformContext?.issueKey ??
-    req.payload?.key;
+    req.payload?.key
+  );
+}
 
-  if (!issueKey) {
-    return { error: "No issue key in context." };
-  }
-
+async function api(path, { method = "GET", body } = {}) {
   const secret = process.env.TESTHUB_PANEL_SECRET;
   if (!secret) {
     return { error: "TESTHUB_PANEL_SECRET is not configured for this app." };
   }
 
-  const url = `${BASE_URL}/api/v1/jira/coverage?key=${encodeURIComponent(issueKey)}`;
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${secret}`, Accept: "application/json" },
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${secret}`,
+      Accept: "application/json",
+      ...(body ? { "Content-Type": "application/json" } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
   });
 
-  if (!response.ok) {
-    const body = await response.text();
-    return {
-      error: `TestHub API responded ${response.status}: ${body.slice(0, 200)}`,
-    };
+  const text = await response.text();
+  let json = {};
+  try {
+    json = text ? JSON.parse(text) : {};
+  } catch {
+    json = {};
   }
 
-  return await response.json();
+  if (!response.ok) {
+    return {
+      error: json.error ?? `TestHub API responded ${response.status}: ${text.slice(0, 200)}`,
+    };
+  }
+  return json;
+}
+
+resolver.define("getCoverage", async (req) => {
+  const issueKey = issueKeyFrom(req);
+  if (!issueKey) return { error: "No issue key in context." };
+  return api(`/api/v1/jira/coverage?key=${encodeURIComponent(issueKey)}`);
+});
+
+resolver.define("searchTests", async (req) => {
+  const issueKey = issueKeyFrom(req);
+  if (!issueKey) return { error: "No issue key in context." };
+  const query = req.payload?.query ?? "";
+  return api(
+    `/api/v1/jira/tests?issueKey=${encodeURIComponent(issueKey)}&query=${encodeURIComponent(query)}`,
+  );
+});
+
+resolver.define("createTest", async (req) => {
+  const issueKey = issueKeyFrom(req);
+  if (!issueKey) return { error: "No issue key in context." };
+  return api("/api/v1/jira/tests", {
+    method: "POST",
+    body: {
+      issueKey,
+      title: req.payload?.title,
+      description: req.payload?.description,
+      steps: req.payload?.steps,
+    },
+  });
+});
+
+resolver.define("linkTest", async (req) => {
+  const issueKey = issueKeyFrom(req);
+  if (!issueKey) return { error: "No issue key in context." };
+  return api("/api/v1/jira/link", {
+    method: "POST",
+    body: { issueKey, caseKey: req.payload?.caseKey },
+  });
+});
+
+resolver.define("recordResult", async (req) => {
+  const issueKey = issueKeyFrom(req);
+  if (!issueKey) return { error: "No issue key in context." };
+  return api("/api/v1/jira/execute", {
+    method: "POST",
+    body: {
+      issueKey,
+      caseKey: req.payload?.caseKey,
+      status: req.payload?.status,
+      comment: req.payload?.comment,
+    },
+  });
 });
 
 export const handler = resolver.getDefinitions();

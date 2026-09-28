@@ -19,6 +19,7 @@ model Project {
   description String?
   restricted  Boolean         @default(false)
   requirementJql String?
+  jiraProjectKey String?
   jiraPassStatus String?
   jiraFailStatus String?
   createdById String?

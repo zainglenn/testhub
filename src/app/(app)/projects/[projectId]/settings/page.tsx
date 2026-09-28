@@ -226,6 +226,13 @@ export default async function ProjectSettingsPage(
             successMessage="Write-back updated"
           >
             <TextField
+              name="jiraProjectKey"
+              label="Jira project key"
+              placeholder="SCRUM"
+              defaultValue={project.jiraProjectKey ?? ""}
+              helperText="Ties this project to a Jira project for the embedded panel."
+            />
+            <TextField
               name="jiraPassStatus"
               label="On PASS → status"
               placeholder="Done"
