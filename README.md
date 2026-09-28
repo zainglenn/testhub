@@ -482,6 +482,14 @@ login page; the flow discovers endpoints from
 `<issuer>/.well-known/openid-configuration`, uses authorization-code + PKCE, and
 provisions users on first login (matched by email).
 
+### Hardening
+
+Requests are rate-limited via a Postgres-backed fixed-window limiter
+(`RateLimit`): panel API **240/min**, `POST /api/ingest` **60/min** per token,
+and GraphQL **120/min**. Over-limit requests get `429` with `Retry-After`.
+Sensitive actions (Jira publish/unpublish, CI ingestion) are written to the
+workspace **audit log**.
+
 ### Jira details
 
 - Authentication uses OAuth 2.0 (3LO). The connection is stored in the

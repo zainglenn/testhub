@@ -703,3 +703,12 @@ model SsoConfig {
   clientSecret String?
   updatedAt    DateTime  @updatedAt
 }
+
+model RateLimit {
+  key         String   @id
+  count       Int      @default(0)
+  windowStart DateTime
+  updatedAt   DateTime @updatedAt
+
+  @@index([windowStart])
+}

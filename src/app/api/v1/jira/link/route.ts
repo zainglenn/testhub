@@ -18,7 +18,7 @@ export function OPTIONS() {
 }
 
 export async function POST(request: Request) {
-  const authError = authenticatePanel(request);
+  const authError = await authenticatePanel(request, "link");
   if (authError) return authError;
 
   let body: { issueKey?: string; caseKey?: string };

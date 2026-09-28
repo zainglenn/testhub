@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { ActionState } from "@/lib/action-state";
+import { recordAudit } from "@/lib/audit";
 import { requirePermission } from "@/lib/authz";
 import {
   createIssue,
@@ -139,7 +140,8 @@ export async function publishCaseToJira(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  if (!(await requirePermission(PERMISSIONS.CASE_MANAGE))) {
+  const session = await requirePermission(PERMISSIONS.CASE_MANAGE);
+  if (!session) {
     return { ok: false, error: "You do not have permission to edit cases." };
   }
   const id = String(formData.get("testCaseId") ?? "");
@@ -157,6 +159,16 @@ export async function publishCaseToJira(
   const result = await publishMirrorCase(testCase);
   if (!result.ok) {
     return { ok: false, error: result.error ?? "Failed to publish." };
+  }
+  if (testCase.project.workspaceId) {
+    await recordAudit({
+      workspaceId: testCase.project.workspaceId,
+      actorId: session.userId,
+      action: "jira.publish",
+      entityType: "testCase",
+      entityId: testCase.id,
+      metadata: { issueKey: result.key },
+    });
   }
   revalidateCaseAndProject(testCase.id);
   return { ok: true };
@@ -234,11 +246,16 @@ export async function syncCaseToJira(formData: FormData): Promise<void> {
 
 /** Detaches the mirror mapping (the Jira issue itself is left in place). */
 export async function unpublishCaseFromJira(formData: FormData): Promise<void> {
-  if (!(await requirePermission(PERMISSIONS.CASE_MANAGE))) return;
+  const session = await requirePermission(PERMISSIONS.CASE_MANAGE);
+  if (!session) return;
   const id = String(formData.get("testCaseId") ?? "");
   const testCase = await prisma.testCase.findUnique({
     where: { id },
-    select: { id: true, jiraIssueKey: true },
+    select: {
+      id: true,
+      jiraIssueKey: true,
+      project: { select: { workspaceId: true } },
+    },
   });
   if (!testCase || !(await caseInActiveWorkspace(testCase.id))) return;
 
@@ -251,6 +268,16 @@ export async function unpublishCaseFromJira(formData: FormData): Promise<void> {
     where: { id: testCase.id },
     data: { jiraIssueKey: null },
   });
+  if (testCase.project.workspaceId) {
+    await recordAudit({
+      workspaceId: testCase.project.workspaceId,
+      actorId: session.userId,
+      action: "jira.unpublish",
+      entityType: "testCase",
+      entityId: testCase.id,
+      metadata: { issueKey: testCase.jiraIssueKey },
+    });
+  }
   revalidateCaseAndProject(testCase.id);
 }
 

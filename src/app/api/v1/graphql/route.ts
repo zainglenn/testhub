@@ -2,6 +2,7 @@ import { graphql } from "graphql";
 import { hashToken } from "@/lib/api-token";
 import { rootValue, schema, type GraphQLContext } from "@/lib/graphql/api";
 import { prisma } from "@/lib/prisma";
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -67,6 +68,15 @@ export async function POST(request: Request) {
   const authResult = await authenticate(request);
   if ("status" in authResult) return json(authResult.body, authResult.status);
 
+  const limited = rateLimitResponse(
+    await rateLimit({
+      key: `graphql:${authResult.ctx.scopedProjectId ?? "panel"}`,
+      limit: 120,
+      windowMs: 60_000,
+    }),
+  );
+  if (limited) return limited;
+
   let body: { query?: unknown; variables?: unknown };
   try {
     body = await request.json();
@@ -86,6 +96,15 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   const authResult = await authenticate(request);
   if ("status" in authResult) return json(authResult.body, authResult.status);
+
+  const limited = rateLimitResponse(
+    await rateLimit({
+      key: `graphql:${authResult.ctx.scopedProjectId ?? "panel"}`,
+      limit: 120,
+      windowMs: 60_000,
+    }),
+  );
+  if (limited) return limited;
 
   const url = new URL(request.url);
   const source = url.searchParams.get("query");

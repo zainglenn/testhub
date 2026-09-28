@@ -24,7 +24,7 @@ export function OPTIONS() {
  * returns pass-rate and coverage for one project.
  */
 export async function GET(request: Request) {
-  const authError = authenticatePanel(request);
+  const authError = await authenticatePanel(request, "metrics");
   if (authError) return authError;
 
   const url = new URL(request.url);

@@ -11,7 +11,7 @@ const FUNCTIONS = ["testHubFailing", "testHubHasTests", "testHubUntested"] as co
  * `?projectKey=` scopes to a TestHub project; omit it to search all projects.
  */
 export async function GET(request: Request) {
-  const authError = authenticatePanel(request);
+  const authError = await authenticatePanel(request, "jql-issues");
   if (authError) return authError;
 
   const url = new URL(request.url);

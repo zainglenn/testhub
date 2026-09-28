@@ -18,7 +18,7 @@ export function OPTIONS() {
 }
 
 export async function GET(request: Request) {
-  const authError = authenticatePanel(request);
+  const authError = await authenticatePanel(request, "tests");
   if (authError) return authError;
 
   const url = new URL(request.url);
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const authError = authenticatePanel(request);
+  const authError = await authenticatePanel(request, "tests");
   if (authError) return authError;
 
   let body: {

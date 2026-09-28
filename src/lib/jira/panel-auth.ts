@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 function getPanelSecret(): string | null {
   const secret = process.env.JIRA_PANEL_SECRET;
@@ -49,7 +50,10 @@ export function verifyPanelToken(token: string): boolean {
 }
 
 /** Returns a Response when the request is not authorised, otherwise null. */
-export function authenticatePanel(request: Request): Response | null {
+export async function authenticatePanel(
+  request: Request,
+  name = "panel",
+): Promise<Response | null> {
   if (!getPanelSecret()) {
     return Response.json(
       { error: "Panel API is not configured." },
@@ -66,5 +70,10 @@ export function authenticatePanel(request: Request): Response | null {
     return Response.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  return null;
+  const limit = await rateLimit({
+    key: `panel:${name}`,
+    limit: 240,
+    windowMs: 60_000,
+  });
+  return rateLimitResponse(limit);
 }

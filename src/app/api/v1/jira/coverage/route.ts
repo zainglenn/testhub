@@ -24,7 +24,7 @@ function json(body: unknown, status = 200) {
  * Auth: `JIRA_PANEL_SECRET` (bearer token or HS256 JWT).
  */
 export async function GET(request: Request) {
-  const authError = authenticatePanel(request);
+  const authError = await authenticatePanel(request, "coverage");
   if (authError) return authError;
 
   const url = new URL(request.url);

@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { hashToken } from "@/lib/api-token";
+import { recordAudit } from "@/lib/audit";
 import {
   parseGaugeMachine,
   parseGaugeReport,
@@ -8,6 +9,7 @@ import {
 } from "@/lib/gauge";
 import { parseJUnit } from "@/lib/junit";
 import { prisma } from "@/lib/prisma";
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { isStorageConfigured, uploadObject } from "@/lib/supabase-storage";
 import { parseTrx } from "@/lib/trx";
 
@@ -60,6 +62,14 @@ export async function POST(request: Request) {
   if (!token) {
     return Response.json({ error: "Invalid API token." }, { status: 401 });
   }
+
+  const limit = await rateLimit({
+    key: `ingest:${token.id}`,
+    limit: 60,
+    windowMs: 60_000,
+  });
+  const limited = rateLimitResponse(limit);
+  if (limited) return limited;
 
   let body: {
     junit?: unknown;
@@ -354,6 +364,21 @@ export async function POST(request: Request) {
         evidenceCount += 1;
       }
     }
+  }
+
+  if (project.workspaceId) {
+    await recordAudit({
+      workspaceId: project.workspaceId,
+      action: "ingest.run",
+      entityType: "run",
+      entityId: run.id,
+      metadata: {
+        matched: matched.length,
+        failed: matched.filter((item) => item.status === "FAIL").length,
+        steps: stepCount,
+        evidence: evidenceCount,
+      },
+    });
   }
 
   return Response.json({
