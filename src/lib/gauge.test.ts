@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseGaugeReport, parseGaugeSpec } from "./gauge";
+import { parseGaugeMachine, parseGaugeReport, parseGaugeSpec } from "./gauge";
 
 const SPEC = `# Search
 
@@ -52,5 +52,42 @@ describe("parseGaugeReport", () => {
 
   it("returns an empty array for invalid JSON", () => {
     expect(parseGaugeReport("not json")).toEqual([]);
+  });
+});
+
+const MACHINE = [
+  '{"type":"specStart","id":"s1","name":"Search","fileName":"specs/search.spec"}',
+  '{"type":"scenarioStart","id":"sc1","name":"Search returns products"}',
+  '{"type":"stepStart","id":"st1","name":"Open the catalogue"}',
+  '{"type":"stepEnd","id":"st1","name":"Open the catalogue","result":{"status":"pass"}}',
+  '{"type":"stepStart","id":"st2","name":"Search for shoes"}',
+  '{"type":"stepEnd","id":"st2","name":"Search for shoes","result":{"status":"fail"},"screenshot":"screenshots/fail.png"}',
+  '{"type":"scenarioEnd","id":"sc1","name":"Search returns products","result":{"status":"fail"}}',
+  '{"type":"specEnd","id":"s1","name":"Search","fileName":"specs/search.spec","result":{"status":"fail"}}',
+].join("\n");
+
+describe("parseGaugeMachine", () => {
+  it("parses per-step statuses from the NDJSON stream", () => {
+    const scenarios = parseGaugeMachine(MACHINE);
+    expect(scenarios).toHaveLength(1);
+    const scenario = scenarios[0];
+    expect(scenario.specFile).toBe("specs/search.spec");
+    expect(scenario.scenarioName).toBe("Search returns products");
+    expect(scenario.status).toBe("FAIL");
+    expect(scenario.steps).toEqual([
+      { index: 1, name: "Open the catalogue", status: "PASS", screenshot: null },
+      {
+        index: 2,
+        name: "Search for shoes",
+        status: "FAIL",
+        screenshot: "screenshots/fail.png",
+      },
+    ]);
+  });
+
+  it("returns an empty array for the summarized JSON form", () => {
+    expect(
+      parseGaugeMachine(JSON.stringify({ specs: [{ scenarios: [] }] })),
+    ).toEqual([]);
   });
 });

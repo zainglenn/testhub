@@ -135,3 +135,150 @@ export function parseGaugeReport(json: string): IngestResult[] {
   }
   return results;
 }
+
+export type GaugeMachineStep = {
+  index: number;
+  name: string;
+  status: IngestResult["status"];
+  screenshot: string | null;
+};
+
+export type GaugeMachineScenario = {
+  specName: string;
+  specFile: string;
+  scenarioName: string;
+  status: IngestResult["status"];
+  steps: GaugeMachineStep[];
+};
+
+function deriveScenarioStatus(
+  steps: GaugeMachineStep[],
+): IngestResult["status"] {
+  if (steps.some((step) => step.status === "FAIL")) return "FAIL";
+  if (steps.some((step) => step.status === "SKIPPED")) return "SKIPPED";
+  return "PASS";
+}
+
+type GaugeMessage = {
+  type?: string;
+  id?: string;
+  name?: string;
+  stepText?: string;
+  fileName?: string;
+  isBeforeStep?: boolean;
+  isAfterStep?: boolean;
+  screenshot?: string;
+  status?: string;
+  result?: { status?: string; screenshot?: string };
+};
+
+/**
+ * Parses Gauge's `--machine-readable` NDJSON stream into specs/scenarios with
+ * per-step results (and any screenshot path Gauge attached to a step). Returns
+ * an empty array when the input is the summarized JSON form (handled by
+ * `parseGaugeReport`).
+ */
+export function parseGaugeMachine(text: string): GaugeMachineScenario[] {
+  const trimmed = text.trim();
+  if (!trimmed) return [];
+
+  // A single summarized JSON document is not NDJSON.
+  if (trimmed.startsWith("{") && !trimmed.includes("\n")) {
+    try {
+      const parsed = JSON.parse(trimmed) as { specs?: unknown };
+      if (Array.isArray(parsed.specs)) return [];
+    } catch {
+      // Fall through and try NDJSON.
+    }
+  }
+
+  const scenarios: GaugeMachineScenario[] = [];
+  let specName = "";
+  let specFile = "";
+  let scenarioName = "";
+  let steps: GaugeMachineStep[] = [];
+  const pending = new Map<string, GaugeMachineStep>();
+
+  const flush = (status?: IngestResult["status"]) => {
+    if (!scenarioName && steps.length === 0) return;
+    scenarios.push({
+      specName,
+      specFile,
+      scenarioName,
+      status: status ?? deriveScenarioStatus(steps),
+      steps,
+    });
+    scenarioName = "";
+    steps = [];
+    pending.clear();
+  };
+
+  for (const rawLine of trimmed.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line.startsWith("{")) continue;
+    let message: GaugeMessage;
+    try {
+      message = JSON.parse(line) as GaugeMessage;
+    } catch {
+      continue;
+    }
+
+    switch (message.type) {
+      case "specStart":
+        specName = message.name ?? "";
+        specFile = message.fileName ?? "";
+        break;
+      case "specEnd":
+        if (message.fileName) specFile = message.fileName;
+        if (message.name) specName = message.name;
+        break;
+      case "scenarioStart":
+        scenarioName = message.name ?? message.stepText ?? "";
+        steps = [];
+        pending.clear();
+        break;
+      case "stepStart": {
+        const name = message.name ?? message.stepText ?? "";
+        if (
+          !name ||
+          name.startsWith("__gauge_") ||
+          message.isBeforeStep ||
+          message.isAfterStep
+        ) {
+          break;
+        }
+        const step: GaugeMachineStep = {
+          index: steps.length + 1,
+          name,
+          status: "PASS",
+          screenshot: null,
+        };
+        pending.set(String(message.id ?? name), step);
+        steps.push(step);
+        break;
+      }
+      case "stepEnd": {
+        const step = pending.get(String(message.id ?? message.name ?? ""));
+        if (!step) break;
+        step.status = mapStatus(
+          message.result?.status ?? message.status,
+        ) as GaugeMachineStep["status"];
+        step.screenshot =
+          message.screenshot ?? message.result?.screenshot ?? null;
+        break;
+      }
+      case "scenarioEnd":
+        flush(
+          mapStatus(
+            message.result?.status ?? message.status,
+          ) as GaugeMachineScenario["status"],
+        );
+        break;
+      default:
+        break;
+    }
+  }
+
+  flush();
+  return scenarios;
+}
